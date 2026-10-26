@@ -1,0 +1,136 @@
+/* ==========================================================================
+   ui-kit · 基础样式（桌面化规则）
+   入口 CSS 的写法见 README「接入」：第一行声明 @layer tailwind-base, antd;
+   本文件的 @layer base 会被 Tailwind 合并进 tailwind-base 层，排在 antd 之下，
+   所以这里的元素级规则不会覆盖 antd 组件。
+   颜色全部读 ThemeProvider 写在 :root 上的 --ant-* / --kit-* 变量。
+   ========================================================================== */
+
+@layer base {
+  /* 首帧兜底：ThemeProvider 挂载前变量还不存在，只有画布色需要先对。
+     这两个值须与 antd-theme.ts 的 colorBgLayout 一致。 */
+  html {
+    background-color: #f4f6fa;
+  }
+  html.dark {
+    background-color: #151d29;
+  }
+
+  * {
+    border-color: var(--ant-color-border-secondary);
+  }
+
+  /* 满窗口布局：滚动只交给内容区，避免整窗橡皮筋回弹 */
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--ant-color-bg-layout);
+    color: var(--ant-color-text);
+    /* 尺寸按 px 标定；html 保持 16px，不要改根字号 */
+    font-size: var(--ant-font-size, 12px);
+    line-height: var(--ant-line-height, 1.6667);
+    font-family: var(--ant-font-family, "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif);
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* 毛玻璃：背景换成主题配色的渐变（ThemeProvider 写入 --kit-backdrop），固定不随内容滚动 */
+  html[data-glass] body {
+    background: var(--kit-backdrop);
+    background-attachment: fixed;
+  }
+
+  /* 只在 macOS 开启灰阶抗锯齿；Windows 上开会让字发虚（theme-init.js 写入 data-platform） */
+  html[data-platform="mac"] body {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* 桌面应用：界面骨架不可选中，内容区按需开放 */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  [contenteditable],
+  [data-selectable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* 自写的可交互元素也要有键盘焦点提示；antd 组件有自己的焦点样式，优先级更高 */
+  :focus-visible {
+    outline: var(--ant-line-width-focus, 3px) solid var(--ant-color-primary-border);
+    outline-offset: 1px;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  /* 滚动条：显式统一，否则 WebView2 与 WKWebView 宽度差异肉眼可见 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ant-color-fill-secondary) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--ant-color-fill-secondary);
+    border-radius: 4px;
+  }
+
+  /* 减弱动态效果不在这里处理：ThemeProvider 检测到 prefers-reduced-motion 时给 antd 设 motion: false，
+     自写元素的过渡时长读 --ant-motion-duration-*，会一起归零。
+     不要在这里全局改 transition / animation 时长：antd 的弹层要在动效过程中计算位置，
+     时长被强行压缩后下拉、弹窗会停在屏幕外（-1000vw），Segmented 会丢失选中态。 */
+}
+
+/* 毛玻璃面。放在 components 层（不分层），优先级高于 @layer antd 里的 Card 背景。
+   数值来自设计稿，深色下的透明度由 antd-theme.ts 的 GLASS 调整。 */
+@layer components {
+  .kit-glass {
+    background: var(--kit-glass-bg);
+    -webkit-backdrop-filter: var(--kit-glass-blur);
+    backdrop-filter: var(--kit-glass-blur);
+    border: 1px solid var(--kit-glass-border);
+    border-radius: var(--kit-glass-radius);
+    box-shadow: var(--kit-glass-shadow);
+  }
+  .kit-glass .ant-card-head {
+    border-bottom-color: var(--kit-glass-border);
+  }
+
+  /* 内嵌玻璃：玻璃卡片里的列表、表格。只换成半透明底和浅描边，不再叠模糊 */
+  .kit-glass-inset {
+    background: var(--kit-glass-inset-bg);
+    border-color: var(--kit-glass-inset-border);
+  }
+  .kit-glass-inset .ant-table,
+  .kit-glass-inset .ant-table-header,
+  .kit-glass-inset .ant-table-container {
+    background: transparent;
+  }
+  .kit-glass-inset .ant-table-thead > tr > th,
+  .kit-glass-inset .ant-table-thead > tr > td {
+    background: var(--kit-glass-inset-header);
+  }
+}

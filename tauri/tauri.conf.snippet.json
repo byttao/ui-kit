@@ -1,0 +1,26 @@
+{
+  "//": "ui-kit 推荐的窗口与安全配置片段，合并进 src-tauri/tauri.conf.json 的 app 字段。",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "应用名称",
+        "width": 1400,
+        "height": 918,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "center": true,
+        "resizable": true,
+        "decorations": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  }
+}

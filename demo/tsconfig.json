@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": [
+      "vite/client"
+    ],
+    "paths": {
+      "@kit": [
+        "../index.ts"
+      ],
+      "@kit/*": [
+        "../*"
+      ],
+      "*": [
+        "./node_modules/@types/*",
+        "./node_modules/*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "../index.ts",
+    "../lib",
+    "../antd-theme.ts",
+    "../theme.tsx",
+    "../components",
+    "../tauri"
+  ]
+}

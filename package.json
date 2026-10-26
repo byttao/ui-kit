@@ -1,0 +1,38 @@
+{
+  "name": "ui-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tauri 2 + React + Ant Design 6 桌面界面套件：antd 主题规范、随主题变化的侧栏、毛玻璃、对比度审计与 Tauri 集成。以源码方式拷入项目使用。",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/byttao/ui-kit.git"
+  },
+  "files": [
+    "antd-theme.ts",
+    "theme.tsx",
+    "theme-init.js",
+    "tailwind.preset.cjs",
+    "index.ts",
+    "components",
+    "lib",
+    "styles",
+    "tauri",
+    "design.md",
+    "README.md",
+    "AI_GUIDE.md",
+    "CHANGELOG.md"
+  ],
+  "peerDependencies": {
+    "@ant-design/colors": "^8.0.1",
+    "@ant-design/cssinjs": "^2.1.2",
+    "@ant-design/icons": "^6.3.4",
+    "@tauri-apps/api": "^2.12.4",
+    "antd": "^6.6.8",
+    "clsx": "^2.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^3.4.17"
+  }
+}

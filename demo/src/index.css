@@ -1,0 +1,10 @@
+/* 顺序不能换：先声明层级，Tailwind 基础重置在 antd 之下，工具类不分层、优先级最高 */
+@layer tailwind-base, antd;
+
+@import "../../styles/base.css";
+
+@layer tailwind-base {
+  @tailwind base;
+}
+@tailwind components;
+@tailwind utilities;
