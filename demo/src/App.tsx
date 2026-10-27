@@ -136,9 +136,11 @@ function ConvertPage() {
   const [files, setFiles] = useState<string[]>(SAMPLE_FILES);
   const [preset, setPreset] = useState("1440");
   const [progress, setProgress] = useState<BatchProgress | null>(null);
+  const [failed, setFailed] = useState<Set<string>>(new Set());
   const { logs, log } = useLogger();
   const { message } = AntApp.useApp();
 
+  // 演示部分失败：1303.PNG 失败，成功的移出列表，失败的留下并标红，便于重试
   const run = () => {
     log(`开始处理 ${files.length} 张图片。`, "processing");
     let index = 0;
@@ -153,8 +155,12 @@ function ConvertPage() {
         file_name: done ? "" : files[index - 1],
       });
       if (done) {
-        log(`已输出 ${files.length} 张图片。`, "success");
-        message.success(`已输出 ${files.length} 张图片`);
+        const failedNow = files.filter((name) => name === "1303.PNG");
+        failedNow.forEach((name) => log(`[!] 处理失败 - ${name}`, "error"));
+        log(`已输出 ${files.length - failedNow.length} 张图片，${failedNow.length} 张失败，已留在列表中。`, "warning");
+        message.warning(`${failedNow.length} 张处理失败，已留在列表中`);
+        setFiles(failedNow);
+        setFailed(new Set(failedNow));
         window.setTimeout(() => setProgress(null), 1500);
         return;
       }
@@ -193,7 +199,15 @@ function ConvertPage() {
           extra={
             <Space size="small">
               <Typography.Text type="secondary">{files.length} 张</Typography.Text>
-              <Button type="link" size="small" disabled={!files.length} onClick={() => setFiles([])}>
+              <Button
+                type="link"
+                size="small"
+                disabled={!files.length}
+                onClick={() => {
+                  setFiles([]);
+                  setFailed(new Set());
+                }}
+              >
                 清空列表
               </Button>
             </Space>
@@ -202,7 +216,10 @@ function ConvertPage() {
           <DropZone
             active={false}
             compact={files.length > 0}
-            onBrowse={() => setFiles(SAMPLE_FILES)}
+            onBrowse={() => {
+              setFiles(SAMPLE_FILES);
+              setFailed(new Set());
+            }}
             hint="JPG、PNG、BMP、GIF · 可批量添加"
           />
           <ListWell>
@@ -211,7 +228,7 @@ function ConvertPage() {
             ) : (
               <ul className="m-0 list-none p-0">
                 {files.map((name, index) => (
-                  <FileRow key={name} index={index + 1}>
+                  <FileRow key={name} index={index + 1} status={failed.has(name) ? "error" : undefined}>
                     {name}
                   </FileRow>
                 ))}

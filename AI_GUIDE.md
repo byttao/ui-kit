@@ -42,7 +42,7 @@ rsync -a --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/
 cp src/ui-kit/theme-init.js public/theme-init.js
 ```
 
-当前版本 1.0.0（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md`。
+当前版本 1.1.0（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md`。
 
 ## 第 3 步：依赖
 
@@ -223,9 +223,10 @@ function FeaturePage() {
 9. **反馈**：`const { message, modal, notification } = App.useApp()`。不要用 `message.success()` 这类静态方法（拿不到主题）。
 10. **布局**：每个功能页 = `Page` > `Workspace`（左列表、右设置栏，右栏宽度全应用一致）+ 底部日志 `Panel`。只让列表 / 日志滚动，`Page` 本身不滚。列表卡片 `<Panel fill className="flex-1">`。
 11. **日志**：每个功能页各自 `useLogger()`，不要多页共用一份。
-12. **拖拽**只用 `useFileDrop`（窗口级 Tauri 事件）。不要用 HTML5 `onDrop`，也不要用 antd `Upload.Dragger`（都拿不到本地路径）。
-13. **本地图片预览**用 `convertFileSrc(path)`（`@tauri-apps/api/core`），依赖第 4 步的 assetProtocol 与 CSP。
-14. **v6 弃用 API 不要写**：`Space direction`（用 `orientation`）、`Alert message`（用 `title`）、`Progress trailColor`（用 `railColor`）。以 `antd lint` 的结果为准。
+12. **批处理部分失败**：成功的移出列表，失败的留下并用 `FileRow status="error"`（表格用 `FILE_ROW_ERROR_CLASS` + `FailedMark`）标红，方便重试。
+13. **拖拽**只用 `useFileDrop`（窗口级 Tauri 事件）。不要用 HTML5 `onDrop`，也不要用 antd `Upload.Dragger`（都拿不到本地路径）。
+14. **本地图片预览**用 `convertFileSrc(path)`（`@tauri-apps/api/core`），依赖第 4 步的 assetProtocol 与 CSP。
+15. **v6 弃用 API 不要写**：`Space direction`（用 `orientation`）、`Alert message`（用 `title`）、`Progress trailColor`（用 `railColor`）。以 `antd lint` 的结果为准。
 
 ## 组件速查（从 `./ui-kit` 导入）
 
@@ -239,7 +240,8 @@ function FeaturePage() {
 | `Panel` | antd `Card` 的全部参数 + `fill`（内容区撑满卡片） |
 | `Topbar` / `StatusBar` | 普通容器，传给 AppShell 的 `topbar` / `statusbar` |
 | `DropZone` | `active` `onBrowse` `title?` `hint?` `icon?` `compact?` `disabled?` |
-| `ListWell` / `FileRow` | 列表滚动容器（可传 ref，给 antd Table 的 sticky 用）/ 文件行（`index` `selected` `trailing` `onClick`） |
+| `ListWell` / `FileRow` | 列表滚动容器（可传 ref，给 antd Table 的 sticky 用）/ 文件行（`index` `selected` `status="error"` `trailing` `onClick`） |
+| `FILE_ROW_ERROR_CLASS` / `FailedMark` | antd Table 失败行的 `rowClassName` / 失败图标 + 文字 |
 | `LogViewer` + `useLogger(limit=1000)` | `const { logs, log, clear } = useLogger()`；`log(msg, "info"\|"success"\|"warning"\|"error"\|"processing")` |
 | `ProgressPanel` | `progress: BatchProgress \| null`（null 时不渲染） |
 | `ThemeProvider` / `useTheme` | `accent` `sidebar="theme"\|"light"` `glass`；`useTheme()` → `{ mode, resolved, accent, sidebar, glass, setMode, toggle }` |

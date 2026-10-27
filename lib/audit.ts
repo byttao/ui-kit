@@ -80,6 +80,10 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
   add("文字", "占位符 · 输入框", t.colorTextPlaceholder, container);
   add("文字", "表头 · 表头底", t.colorTextSecondary, fillAlter);
   add("文字", "正文 · 选中行", t.colorText, solid(t.controlItemBgActive, container));
+  // 失败行（FileRow status="error" / FILE_ROW_ERROR_CLASS）：红字压在浅红底、悬停底、选中底上
+  add("文字", "失败行", t.colorErrorText, t.colorErrorBg);
+  add("文字", "失败行 · 悬停", t.colorErrorTextHover, t.colorErrorBgHover);
+  add("文字", "失败行 · 选中", t.colorErrorText, solid(t.controlItemBgActive, container));
 
   add("主色", "链接 · 卡片", t.colorLink, container);
   add("主色", "链接 · 悬停", t.colorLinkHover, container);

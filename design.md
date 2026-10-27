@@ -334,6 +334,7 @@ ui-kit 对 antd 组件的用法约定：
   - **实心危险按钮（`danger type="primary"`）只出现在确认弹窗里**：`modal.confirm({ okButtonProps: { danger: true } })`。它取代该弹窗的主按钮，不与实心主按钮同屏并排。
   - 同一区域不同时出现实心主按钮和实心危险按钮。
 - **清空列表**：`<Button type="link" size="small">` 放在卡片标题右侧（Card 的 `extra`）。
+- **部分失败保留失败项**：批处理部分失败时，成功的移出列表，失败的留在列表里并用**次级危险样式**标出：浅红底 `colorErrorBg` + 红字 `colorErrorText`（与描边危险按钮同一档），行尾带失败图标与「失败」文字，悬停时底色与文字一起加深一档。`FileRow status="error"`；antd Table 用 `FILE_ROW_ERROR_CLASS` + `FailedMark`。重新添加或清空列表时清除失败标记。
 - **单选组**：竖排用 `Radio.Group` 加 `orientation="vertical"`；2–4 个互斥模式横排用 `Segmented`。
 - **表格内下拉**：`<Select size="small">`。
 - **状态一律带图标，不单靠颜色**（WCAG 1.4.1；森翠、金韵、马卡龙下主色与功能色同色系，更要遵守）：

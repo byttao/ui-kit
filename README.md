@@ -1,6 +1,6 @@
 # ui-kit · Tauri 2 + React + Ant Design 6 桌面界面套件
 
-**版本 1.0.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
+**版本 1.1.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
 
 以 **Ant Design v6** 为主：控件、动效、主题系统、色彩体系都用 antd；ui-kit 只补 antd 没覆盖的部分——12px 高密度正文、AA 对比度、深蓝墨色侧栏、桌面工具的页面骨架和 Tauri 集成。
 
@@ -38,7 +38,7 @@ ui-kit/
 ├── components/app/           antd 没有的应用级组件
 │   ├── app-shell.tsx         AppShell / Topbar / StatusBar / Page / PageHeader / Workspace / Panel
 │   ├── drop-zone.tsx         DropZone
-│   ├── file-list.tsx         ListWell / FileRow / fileName
+│   ├── file-list.tsx         ListWell / FileRow（含失败状态）/ FailedMark / fileName
 │   ├── log-viewer.tsx        LogViewer + useLogger
 │   ├── progress-panel.tsx    ProgressPanel（antd Progress）
 │   ├── theme-toggle.tsx      ThemeToggle
@@ -237,6 +237,7 @@ import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, Progress
 - **清空列表**放在卡片标题右侧（`extra`），用 `type="link"`。
 - **主按钮固定在右栏底部**，写明数量。
 - 表格放进 `ListWell`，用 `sticky={{ getContainer: () => wellRef.current }}` 让表头吸顶。
+- **部分失败时保留失败项**：成功的移出列表，失败的留下并标红，方便重试。列表用 `<FileRow status="error">`；antd Table 用 `rowClassName={(r) => failed.has(r.path) ? FILE_ROW_ERROR_CLASS : ""}`，名称列加 `<FailedMark />`。
 
 ---
 
