@@ -125,7 +125,7 @@ import { App as AntApp, Button, Empty, Radio } from "antd";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, ProgressPanel,
-  ThemeToggle, Workspace, fileName, useFileDrop, useLogger,
+  ThemeMenu, ThemeToggle, Workspace, fileName, useFileDrop, useLogger,
 } from "./ui-kit";
 
 type PageKey = "home";
@@ -138,7 +138,7 @@ export default function App() {
       nav={[{ key: "home", label: "功能一", icon: <SwapOutlined />, section: "分组名" }]}
       active={page}
       onNavigate={setPage}
-      sidebarFooter={<><span>版本 V1.0.0</span><ThemeToggle /></>}
+      sidebarFooter={<><span>版本 V1.0.0</span><span className="flex items-center gap-1"><ThemeMenu /><ThemeToggle /></span></>}
     >
       <FeaturePage />
     </AppShell>
@@ -214,7 +214,7 @@ function FeaturePage() {
 
 1. **控件一律用 antd**，从 `"antd"` 导入。只有应用级组件（`AppShell`、`Panel`、`DropZone`、`LogViewer` 等）从 `./ui-kit` 导入。不要自己写按钮、输入框、下拉、弹窗、Tooltip。
 2. **颜色只用 token**：组件里用 `theme.useToken()`；className 用 preset 的语义类（`bg-container`、`bg-layout`、`text-text-secondary`、`text-primary-text`、`border`、`bg-item-active`、`text-error` …）。**禁止** `bg-gray-*`、`text-slate-*`、`bg-orange-*` 这类色板类和内联色值；**禁止** `bg-primary/10` 这类透明度写法（变量不支持）。
-3. **主题只通过 `ThemeProvider` 的 `accent` / `sidebar` / `glass` 切换**，不要在页面里传 `ConfigProvider theme` 覆盖颜色。要新增主题，改 `ui-kit/antd-theme.ts` 的 `THEMES` 并跑审计（需用户同意修改 ui-kit）。用户只给配色时：取饱和度最高的一个作 `primary`、最深或最有辨识度的一个作 `sidebar`，审计出现区分度警告时写进 `note` 并告诉用户。
+3. **主题只通过 `ThemeProvider` 的 `accent` / `sidebar` / `glass`（或 `useTheme().setAccent`）切换**，不要在页面里传 `ConfigProvider theme` 覆盖颜色。要新增主题，改 `ui-kit/antd-theme.ts` 的 `THEMES` 并跑审计（需用户同意修改 ui-kit）。用户只给配色时：取饱和度最高的一个作 `primary`、最深或最有辨识度的一个作 `sidebar`，审计出现区分度警告时写进 `note` 并告诉用户。
 4. **字号**：正文 `text-base`（12px，默认），说明 `text-sm`（11px），卡片标题由 Card 自带（14px），页面标题用 `PageHeader`（26px）。不要用 14px / 16px 做正文。不要叠加 `compactAlgorithm`。
 5. **按钮**：每个区域最多一个 `type="primary"`，放在右栏底部并写明数量；「清空列表」用 `type="link" size="small"` 放在 `Panel` 的 `extra`。
 6. **危险操作**：页面上用 `<Button danger icon={<DeleteOutlined />}>删除…</Button>` 或 `danger type="text"`；**实心危险按钮只出现在 `modal.confirm({ okButtonProps: { danger: true } })` 里**，不与实心主按钮并排。
@@ -244,8 +244,9 @@ function FeaturePage() {
 | `FILE_ROW_ERROR_CLASS` / `FailedMark` | antd Table 失败行的 `rowClassName` / 失败图标 + 文字 |
 | `LogViewer` + `useLogger(limit=1000)` | `const { logs, log, clear } = useLogger()`；`log(msg, "info"\|"success"\|"warning"\|"error"\|"processing")` |
 | `ProgressPanel` | `progress: BatchProgress \| null`（null 时不渲染） |
-| `ThemeProvider` / `useTheme` | `accent` `sidebar="theme"\|"light"` `glass`；`useTheme()` → `{ mode, resolved, accent, sidebar, glass, setMode, toggle }` |
+| `ThemeProvider` / `useTheme` | `accent`（不传则自己保存并记住）`sidebar="theme"\|"light"` `glass`；`useTheme()` → `{ mode, resolved, accent, setAccent, sidebar, glass, setMode, toggle }` |
 | `ThemeToggle` | 放在 `sidebarFooter` 里 |
+| `ThemeMenu` | 主题切换下拉，放在 `sidebarFooter` 里 `ThemeToggle` 旁边 |
 | `ThemePicker` | `value` `onChange`；主题选择卡片（配色色块 + 区分度提示），放在设置页 |
 | `THEMES` / `FUNCTIONAL` | 主题与功能色定义（只读） |
 | `useFileDrop` | `useFileDrop(onDrop, { extensions?, enabled? })` → `{ hovering }` |

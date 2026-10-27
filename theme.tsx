@@ -13,6 +13,7 @@ import { App as AntApp, ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import {
   DEFAULTS,
+  THEMES,
   buildTheme,
   sidebarStyle,
   tokenToCssVars,
@@ -30,6 +31,8 @@ interface ThemeContextValue {
   /** 实际生效的明暗 */
   resolved: Resolved;
   accent: Accent;
+  /** 切换主题并记住选择；ThemeProvider 传了 accent（受控）时由外部决定，这里不生效 */
+  setAccent: (accent: Accent) => void;
   /** 实际生效的侧栏样式（深色模式下始终为 theme） */
   sidebar: SidebarStyle;
   /** 毛玻璃是否开启；Panel / Topbar / StatusBar 据此加上玻璃面 */
@@ -40,6 +43,7 @@ interface ThemeContextValue {
 }
 
 const STORAGE_KEY = "ui-kit:theme";
+const ACCENT_KEY = "ui-kit:accent";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredMode(): ThemeMode {
@@ -52,6 +56,16 @@ function readStoredMode(): ThemeMode {
   return DEFAULTS.mode;
 }
 
+function readStoredAccent(): Accent {
+  try {
+    const value = localStorage.getItem(ACCENT_KEY);
+    if (value && Object.hasOwn(THEMES, value)) return value as Accent;
+  } catch {
+    // localStorage 不可用时使用默认主题
+  }
+  return DEFAULTS.accent;
+}
+
 function systemPrefersDark() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
@@ -60,7 +74,11 @@ const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
 interface ThemeProviderProps {
   children: ReactNode;
-  /** 主题，见 antd-theme.ts 的 THEMES；默认值见 DEFAULTS（森翠雅韵） */
+  /**
+   * 主题，见 antd-theme.ts 的 THEMES。
+   * 不传时由 ThemeProvider 自己保存（默认 DEFAULTS 的森翠雅韵），用 useTheme().setAccent 或 ThemeMenu 切换，
+   * 选择会记住；传了就是受控用法，由外部 state 决定。
+   */
   accent?: Accent;
   /** 浅色模式下的侧栏："theme" 主题色，"light" 主题色浅底（默认）。深色模式下始终是主题色 */
   sidebar?: SidebarStyle;
@@ -77,11 +95,13 @@ interface ThemeProviderProps {
  */
 export function ThemeProvider({
   children,
-  accent = DEFAULTS.accent,
+  accent: accentProp,
   sidebar = DEFAULTS.sidebar,
   glass = DEFAULTS.glass,
 }: ThemeProviderProps) {
   const [mode, setModeState] = useState<ThemeMode>(readStoredMode);
+  const [storedAccent, setStoredAccent] = useState<Accent>(readStoredAccent);
+  const accent = accentProp ?? storedAccent;
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia(REDUCED_MOTION).matches);
 
@@ -129,13 +149,22 @@ export function ThemeProvider({
     }
   }, []);
 
+  const setAccent = useCallback((next: Accent) => {
+    setStoredAccent(next);
+    try {
+      localStorage.setItem(ACCENT_KEY, next);
+    } catch {
+      // 忽略存储失败，本次会话内仍然生效
+    }
+  }, []);
+
   const toggle = useCallback(() => {
     setMode(resolved === "dark" ? "light" : "dark");
   }, [resolved, setMode]);
 
   const value = useMemo(
-    () => ({ mode, resolved, accent, sidebar: sidebarStyle(options), glass, setMode, toggle }),
-    [mode, resolved, accent, options, glass, setMode, toggle]
+    () => ({ mode, resolved, accent, setAccent, sidebar: sidebarStyle(options), glass, setMode, toggle }),
+    [mode, resolved, accent, setAccent, options, glass, setMode, toggle]
   );
 
   return (

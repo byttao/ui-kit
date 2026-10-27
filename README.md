@@ -42,6 +42,7 @@ ui-kit/
 │   ├── log-viewer.tsx        LogViewer + useLogger
 │   ├── progress-panel.tsx    ProgressPanel（antd Progress）
 │   ├── theme-toggle.tsx      ThemeToggle
+│   ├── theme-menu.tsx        ThemeMenu（侧栏主题切换）
 │   └── theme-picker.tsx      ThemePicker（主题选择）
 ├── tauri/
 │   ├── useFileDrop.ts        窗口级拖拽（拿得到真实路径）
@@ -148,7 +149,7 @@ import { ThemeProvider } from "./ui-kit";
 
 **毛玻璃**：`<ThemeProvider glass>`。`Panel`、`Topbar`、`StatusBar` 变成玻璃面，卡片里的 `ListWell`（含其中的 antd Table）变成更实的内嵌玻璃（`rgba(255,255,255,0.2)` + `blur(16px) saturate(180%)` + 16px 圆角），背景换成主题配色的径向渐变。背景强度会自动收敛到玻璃上的 12px 文字仍 ≥ 4.5:1，所以是柔和的渐变。深色模式用低透明度版本，数值见 design.md「Colors · 毛玻璃」。
 
-**主题选择器**：`<ThemePicker value={accent} onChange={setAccent} />`，放在设置页；卡片上显示配色色块和区分度提示。
+**主题切换**：不给 `ThemeProvider` 传 `accent` 时，主题由它自己保存并记住（`localStorage` 的 `ui-kit:accent`），用 `useTheme().setAccent` 切换。侧栏底部放 `<ThemeMenu />`（下拉列表）；设置页用 `<ThemePicker value={accent} onChange={setAccent} />`（卡片，带配色色块和区分度提示）。
 
 ---
 
@@ -185,7 +186,7 @@ PigResize 的功能页是同一种结构：**左边列表、右边设置、底�
 
 ```tsx
 import { Button, Radio, Space, Typography } from "antd";
-import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, ProgressPanel, ThemeToggle, Workspace } from "./ui-kit";
+import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, ProgressPanel, ThemeMenu, ThemeToggle, Workspace } from "./ui-kit";
 
 <AppShell
   brand={{ mark: "P", name: "PigResize", subtitle: "图片批量处理" }}
@@ -195,7 +196,7 @@ import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, Progress
   ]}
   active={page}
   onNavigate={setPage}
-  sidebarFooter={<><span>版本 V1.6.1</span><ThemeToggle /></>}
+  sidebarFooter={<><span>版本 V1.6.1</span><span className="flex items-center gap-1"><ThemeMenu /><ThemeToggle /></span></>}
 >
   <Page>
     <Workspace

@@ -49,11 +49,11 @@ import {
   Panel,
   ProgressPanel,
   ThemeProvider,
+  ThemeMenu,
   ThemeToggle,
   Workspace,
   useLogger,
   useTheme,
-  type Accent,
   type BatchProgress,
   type NavItem,
   type SidebarStyle,
@@ -73,15 +73,12 @@ const NAV: NavItem<PageKey>[] = [
 const SAMPLE_FILES = ["1299.PNG", "1300.PNG", "1303.PNG", "商品主图-正面.jpg", "详情页-尺码表.png"];
 
 export function App() {
-  const [accent, setAccent] = useState<Accent>(DEFAULTS.accent);
   const [sidebar, setSidebar] = useState<SidebarStyle>(DEFAULTS.sidebar);
   const [glass, setGlass] = useState<boolean>(DEFAULTS.glass);
 
   return (
-    <ThemeProvider accent={accent} sidebar={sidebar} glass={glass}>
+    <ThemeProvider sidebar={sidebar} glass={glass}>
       <Shell
-        accent={accent}
-        setAccent={setAccent}
         sidebar={sidebar}
         setSidebar={setSidebar}
         glass={glass}
@@ -92,8 +89,6 @@ export function App() {
 }
 
 interface ShellProps {
-  accent: Accent;
-  setAccent: (accent: Accent) => void;
   sidebar: SidebarStyle;
   setSidebar: (value: SidebarStyle) => void;
   glass: boolean;
@@ -112,7 +107,10 @@ function Shell(props: ShellProps) {
       sidebarFooter={
         <>
           <span>版本 V1.6.1</span>
-          <ThemeToggle />
+          <span className="flex items-center gap-1">
+            <ThemeMenu />
+            <ThemeToggle />
+          </span>
         </>
       }
     >
@@ -339,8 +337,8 @@ function CropPage() {
 }
 
 /** 组件与主题一览：切换明暗、主题预设与侧栏，检查 antd 组件在各组合下的表现。 */
-function ComponentsPage({ accent, setAccent, sidebar, setSidebar, glass, setGlass }: ShellProps) {
-  const { mode, setMode } = useTheme();
+function ComponentsPage({ sidebar, setSidebar, glass, setGlass }: ShellProps) {
+  const { mode, setMode, accent, setAccent } = useTheme();
   const { message, modal } = AntApp.useApp();
   const [open, setOpen] = useState(false);
 
