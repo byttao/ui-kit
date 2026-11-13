@@ -8,7 +8,7 @@
  */
 import {
   DISTANCE_MIN,
-  GLASS,
+  glassColors,
   THEMES,
   buildTheme,
   glassBlobs,
@@ -85,6 +85,21 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
   add("文字", "失败行 · 悬停", t.colorErrorTextHover, t.colorErrorBgHover);
   add("文字", "失败行 · 选中", t.colorErrorText, solid(t.controlItemBgActive, container));
 
+  // 1.3.0 新组件
+  // 中性 Tag（StatusTag 的排队 / 已取消、参数标签）：正文色压在 fillTertiary 叠卡片的底上
+  add("组件", "中性标签", t.colorText, solid(t.colorFillTertiary, container));
+  // ListRow / FileRow 失败行里的中性 Tag：去底后继承红字，描边换成危险描边（非文字 3:1 不要求，文字同「失败行」）
+  add("组件", "失败行 · 中性标签", t.colorErrorText, t.colorErrorBg);
+  // Thumb / ImageGrid 的占位图标：说明文字色压在 fillAlter 上（图标 3:1）
+  add("组件", "缩略图占位图标", t.colorTextTertiary, solid(t.colorFillAlter, container), 3);
+  // ImageGrid 选中描边、RatioPreview 画布描边（非文字 3:1）
+  add("组件", "图片瓦片选中描边", t.colorPrimary, container, 3);
+  add("组件", "比例预览描边 · 主色浅底", t.colorPrimary, t.colorPrimaryBg, 3);
+  add("组件", "比例预览编号 · 主色浅底", t.colorPrimaryText, t.colorPrimaryBg);
+  // FieldHint：说明 / 警示文字在卡片上
+  add("组件", "参数提示", t.colorTextTertiary, container);
+  add("组件", "参数警示", t.colorWarningText, container);
+
   add("主色", "链接 · 卡片", t.colorLink, container);
   add("主色", "链接 · 悬停", t.colorLinkHover, container);
   add("主色", "主色文字 · 卡片", t.colorPrimaryText, container);
@@ -124,6 +139,11 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
   add("侧栏", "选中", side.activeText, side.activeBg);
   add("侧栏", "图标", side.icon, side.bg, 3);
   add("侧栏", "图标 · 选中", side.icon, side.activeBg, 3);
+  // NavBadge：反色块（侧栏文字色做底、侧栏底色写字），块本身在选中底上要看得出（3:1）。
+  // 弱徽标（tone="muted"）继承菜单项文字色：常态 = 导航文字，悬停 / 选中 = 品牌名色，已由上面几组覆盖。
+  // 不用分组标题色（muted）：它在悬停 / 选中底上只有 3.0–4.3:1。
+  add("侧栏", "徽标数字", side.bg, side.activeText);
+  add("侧栏", "徽标块 · 选中底", side.activeText, side.activeBg, 3);
 
   add("日志", "INFO", kit.logInfo, logBg);
   add("日志", "SUCCESS", kit.logSuccess, logBg);
@@ -147,7 +167,7 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
       }
     });
     // 内嵌玻璃（列表 / 表格）与吸顶表头：再叠一层半透明白
-    const g = GLASS[options.resolved];
+    const g = glassColors(options.accent, options.resolved);
     glassBlobs(options.accent, options.resolved).forEach((blob, i) => {
       const card = composite(g.background, blob);
       const cardHex = `rgb(${card[0]}, ${card[1]}, ${card[2]})`;
@@ -162,7 +182,7 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
     });
 
     // 玻璃是半透明白，叠在色块上；contrast 的第三个参数是玻璃下面那一层
-    const glass = GLASS[options.resolved].background;
+    const glass = g.background;
     glassBlobs(options.accent, options.resolved).forEach((blob, i) => {
       const at = (fg: string) => contrast(fg, glass, blob);
       for (const [label, fg] of [
@@ -171,6 +191,7 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
         ["说明", t.colorTextTertiary],
         ["主色文字", t.colorPrimaryText],
         ["链接", t.colorLink],
+        ["参数警示", t.colorWarningText],
       ] as const) {
         const ratio = at(fg);
         rows.push({

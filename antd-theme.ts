@@ -24,7 +24,7 @@
  */
 import { generate, presetPalettes } from "@ant-design/colors";
 import { theme as antdTheme, type ThemeConfig } from "antd";
-import { composite, contrast, deltaE } from "./lib/contrast";
+import { composite, contrast, deltaE, fromOklch, toOklch } from "./lib/contrast";
 
 export type Resolved = "light" | "dark";
 /** theme：侧栏用主题色；light：浅色侧栏（主题色浅底）。深色模式下始终是主题色侧栏。 */
@@ -142,7 +142,11 @@ const INK = "#0f1621";
 /** 留 0.1 余量，避免取整后卡在 4.5 线上 */
 const AA = 4.6;
 
-/** 表面与中性色（Map 覆盖）。中性色仍是 antd 的透明度写法，只换基色。 */
+/**
+ * 表面与中性色（Map 覆盖）。中性色仍是 antd 的透明度写法，只换基色。
+ * light 是固定值（近白冷调画布，各主题共用）；dark 是极客蓝的「参考墨色」，
+ * 实际值由 surfaceColors() 按主题色相重新着色（见 tintInk）。
+ */
 const SURFACES = {
   light: {
     colorTextBase: "#1d2c40", // 墨色，不是纯黑
@@ -158,9 +162,83 @@ const SURFACES = {
     colorBgElevated: "#243042",
     colorBorder: "#3a4b61",
     colorBorderSecondary: "#2b3a4d",
-    colorSplit: "rgba(230, 237, 247, 0.08)",
   },
 } as const;
+
+/** 深色下的其他参考墨色（同样随主题重新着色）。 */
+const DARK_INK = {
+  /** 深色侧栏：主题侧栏色与它按 62% 混合压暗 */
+  sidebarShade: "#0b0f16",
+  /** 日志底（fillQuaternary 叠在卡片上的近似值），用来挑日志色档位 */
+  logBg: "#212b39",
+  /** 实心块上是深色字时的 Tooltip 底（浅色反色面） */
+  spotlight: "#dfe6f0",
+} as const;
+
+/** 参考墨色（极客蓝侧栏 #19283C）的彩度；侧栏彩度不低于它时，墨色保持原彩度 */
+const INK_REF_CHROMA = toOklch(SURFACES.dark.colorBgContainer)[1];
+const INK_REF_SIDEBAR_CHROMA = toOklch("#19283c")[1];
+
+/**
+ * 深色墨色按主题重新着色：保留每一层的明度（对比度只由明度决定，审计结果不变），
+ * 色相换成主题侧栏色的色相，彩度按侧栏的饱和程度缩放（低饱和主题如莫兰迪更接近中性灰）。
+ * 极客蓝侧栏与参考墨色同色相、同饱和，结果与 1.2.0 的固定值一致。
+ */
+function tintInk(ink: string, accent: Accent) {
+  const [, sideC, sideH] = toOklch(THEMES[accent].sidebar);
+  const [L, C, H] = toOklch(ink);
+  const k = Math.min(1, Math.max(0.5, sideC / INK_REF_SIDEBAR_CHROMA));
+  const hueGap = Math.abs(((sideH - H + 540) % 360) - 180);
+  // 与参考墨色同色相、同饱和（极客蓝）：原样返回，保证与 1.2.0 逐值一致
+  if (k === 1 && hueGap < 3) return ink;
+  // 参考墨色本身的彩度很低（≤ 0.045），上限再压一档，避免黄 / 粉色相下发脏
+  const chroma = Math.min(C * k, INK_REF_CHROMA * 1.5);
+  // 按 WCAG 相对亮度（而不是 OKLab 明度）对齐：同明度下紫、粉色相的亮度更高，
+  // 对齐亮度后，任何颜色叠在这层表面上的对比度都与极客蓝相同，审计结论不随主题变化
+  const target = luminance(ink);
+  let lo = Math.max(0, L - 0.1);
+  let hi = Math.min(1, L + 0.1);
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (luminance(fromOklch(mid, chroma, sideH)) < target) lo = mid;
+    else hi = mid;
+  }
+  return fromOklch((lo + hi) / 2, chroma, sideH);
+}
+
+type SurfaceSet = {
+  colorTextBase: string;
+  colorBgLayout: string;
+  colorBgContainer?: string;
+  colorBgElevated?: string;
+  colorBorder: string;
+  colorBorderSecondary: string;
+  colorSplit?: string;
+};
+
+const surfaceCache = new Map<string, SurfaceSet>();
+
+/**
+ * 某个主题在某个明暗下的表面色：浅色是固定的冷调近白；
+ * 深色由参考墨色按主题色相重新着色（tintInk），画布、卡片、浮层、描边、毛玻璃背景都随主题变化。
+ */
+export function surfaceColors(accent: Accent, resolved: Resolved): SurfaceSet {
+  if (resolved === "light") return SURFACES.light;
+  const key = `${accent}:${resolved}`;
+  const cached = surfaceCache.get(key);
+  if (cached) return cached;
+  const ink = Object.fromEntries(
+    Object.entries(SURFACES.dark).map(([name, value]) => [name, tintInk(value, accent)])
+  ) as Record<keyof typeof SURFACES.dark, string>;
+  const set: SurfaceSet = { ...ink, colorSplit: rgba(ink.colorTextBase, 0.08) };
+  surfaceCache.set(key, set);
+  return set;
+}
+
+/** 深色下其他参考墨色的主题版本；浅色下原样返回。 */
+function darkInk(name: keyof typeof DARK_INK, accent: Accent) {
+  return tintInk(DARK_INK[name], accent);
+}
 
 /**
  * 文字透明度：antd 的 tertiary（0.45）用于说明文字，12px 下只有约 3.3:1，
@@ -198,6 +276,16 @@ export const GLASS = {
   blur: "blur(16px) saturate(180%)",
   radius: 16,
 } as const;
+
+/**
+ * 某个主题的玻璃取值。与 GLASS 相同，只有深色的吸顶表头底改成「该主题的卡片色 88%」，
+ * 不再固定是极客蓝墨色。GLASS.dark.insetHeader 保留极客蓝的值，作为参考。
+ */
+export function glassColors(accent: Accent, resolved: Resolved) {
+  const glass = GLASS[resolved];
+  if (resolved === "light") return glass;
+  return { ...glass, insetHeader: rgba(surfaceColors(accent, resolved).colorBgContainer!, 0.88) };
+}
 
 // ── 颜色工具 ────────────────────────────────────────────────────────────
 
@@ -417,7 +505,7 @@ export function sidebarColors(options: ThemeOptions): SidebarColors {
   const seed = primarySeed(options.accent, "light");
   if (sidebarStyle(options) === "light") return sidebarFrom(mix(seed, WHITE, 0.94), seed);
   // 深色模式：主题侧栏色压暗，仍保留色相
-  const base = options.resolved === "dark" ? mix(def.sidebar, "#0b0f16", 0.62) : def.sidebar;
+  const base = options.resolved === "dark" ? mix(def.sidebar, darkInk("sidebarShade", options.accent), 0.62) : def.sidebar;
   return sidebarFrom(base, seed);
 }
 
@@ -432,9 +520,12 @@ const BLOB_POSITIONS = ["0% 0%", "100% 0%", "100% 100%", "0% 100%", "50% 60%"];
  * 包括卡片玻璃面、内嵌玻璃（列表 / 表格）、吸顶表头、日志底上的说明文字。
  */
 export function glassBlobs(accent: Accent, resolved: Resolved): string[] {
-  const base = SURFACES[resolved].colorBgLayout;
-  const glass = GLASS[resolved].background;
-  const textBase = SURFACES[resolved].colorTextBase;
+  const surfaces = surfaceColors(accent, resolved);
+  const base = surfaces.colorBgLayout;
+  const g = glassColors(accent, resolved);
+  const glass = g.background;
+  const textBase = surfaces.colorTextBase;
+  const logFill = logFillColor(accent, resolved);
   const alpha = TEXT_ALPHA[resolved];
   const primary = primaryColors(accent, resolved);
   // 深色下 colorLink 与主色同种子，推导结果就是实心色
@@ -446,12 +537,12 @@ export function glassBlobs(accent: Accent, resolved: Resolved): string[] {
       const blob = mix(swatch, base, w);
       const surface = flatten(glass, blob);
       // 玻璃上直接写的文字，以及日志底（再叠一层半透明填充）上的说明文字
-      const inset = flatten(GLASS[resolved].inset, surface);
-      const header = flatten(GLASS[resolved].insetHeader, surface);
+      const inset = flatten(g.inset, surface);
+      const header = flatten(g.insetHeader, surface);
       const ok =
         texts.every((fg) => contrast(fg, surface) >= AA && contrast(fg, inset) >= AA) &&
         contrast(rgba(textBase, alpha.secondary), header) >= AA &&
-        contrast(rgba(textBase, alpha.tertiary), LOG_FILL[resolved], surface) >= AA;
+        contrast(rgba(textBase, alpha.tertiary), logFill, surface) >= AA;
       if (ok) return blob;
     }
     return base;
@@ -462,7 +553,7 @@ export function glassBackdrop(accent: Accent, resolved: Resolved) {
   const layers = glassBlobs(accent, resolved).map(
     (c, i) => `radial-gradient(at ${BLOB_POSITIONS[i]}, ${c} 0, transparent 55%)`
   );
-  return `${layers.join(", ")}, ${SURFACES[resolved].colorBgLayout}`;
+  return `${layers.join(", ")}, ${surfaceColors(accent, resolved).colorBgLayout}`;
 }
 
 // ── ui-kit 扩展色：日志 ─────────────────────────────────────────────────
@@ -484,10 +575,14 @@ const LOG_SEEDS = {
   logProcessing: presetPalettes.purple.primary!,
 } as const;
 
-/** 日志底：fillQuaternary 叠在卡片上的近似值，用来挑日志色档位。 */
-const LOG_BG = { light: "#fafbfb", dark: "#212b39" } as const;
-/** 日志底（colorFillQuaternary）本身是半透明色 */
-const LOG_FILL = { light: "rgba(29, 44, 64, 0.02)", dark: "rgba(230, 237, 247, 0.04)" } as const;
+/** 日志底：fillQuaternary 叠在卡片上的近似值，用来挑日志色档位。深色随主题重新着色。 */
+function logBgColor(accent: Accent, resolved: Resolved) {
+  return resolved === "light" ? "#fafbfb" : darkInk("logBg", accent);
+}
+/** 日志底（colorFillQuaternary）本身是半透明色：文字基色的 2%（深色 4%） */
+function logFillColor(accent: Accent, resolved: Resolved) {
+  return rgba(surfaceColors(accent, resolved).colorTextBase, resolved === "light" ? 0.02 : 0.04);
+}
 
 /** 不透明化：把半透明前景叠到背景上，得到 #rrggbb。 */
 function flatten(color: string, under: string) {
@@ -501,10 +596,17 @@ function flatten(color: string, under: string) {
  * 深色玻璃会把底色抬亮，日志色要在最亮的那一块上也达标。
  */
 export function logBackgrounds(options: ThemeOptions): string[] {
-  const { resolved } = options;
-  if (!options.glass) return [LOG_BG[resolved]];
+  const { resolved, accent } = options;
+  if (!options.glass) {
+    const reference = logBgColor(accent, resolved);
+    // 浅色与极客蓝（未重新着色）沿用 1.2.0 的取法，日志色逐值不变
+    if (resolved === "light" || reference === DARK_INK.logBg) return [reference];
+    // 深色：参考近似值 + 实际的「日志底叠在卡片上」，两者都要达标（重新着色后二者略有偏差）
+    return [reference, flatten(logFillColor(accent, resolved), surfaceColors(accent, resolved).colorBgContainer!)];
+  }
   const glass = GLASS[resolved].background;
-  return glassBlobs(options.accent, resolved).map((blob) => flatten(LOG_FILL[resolved], flatten(glass, blob)));
+  const fill = logFillColor(accent, resolved);
+  return glassBlobs(accent, resolved).map((blob) => flatten(fill, flatten(glass, blob)));
 }
 
 function readableStep(seed: string, resolved: Resolved, backgrounds: string[]) {
@@ -540,7 +642,7 @@ export function themeDistances(accent: Accent) {
 export function buildTheme(options: ThemeOptions): ThemeConfig {
   const { accent, resolved, glass = false } = options;
   const dark = resolved === "dark";
-  const surface = SURFACES[resolved];
+  const surface = surfaceColors(accent, resolved);
   const alpha = TEXT_ALPHA[resolved];
   const side = sidebarColors(options);
   const textSecondary = rgba(surface.colorTextBase, alpha.secondary);
@@ -585,7 +687,7 @@ export function buildTheme(options: ThemeOptions): ThemeConfig {
       colorLinkActive: primary.textHover,
       colorTextLightSolid: primary.onSolid,
       // 实心块上是深色字时，Tooltip 也换成浅底深字，仍是 antd 的「高对比反色面」
-      ...(primary.onSolid === INK ? { colorBgSpotlight: "#dfe6f0" } : {}),
+      ...(primary.onSolid === INK ? { colorBgSpotlight: dark ? darkInk("spotlight", accent) : DARK_INK.spotlight } : {}),
     },
 
     // ── 第 4 层 · 组件 ──
@@ -600,7 +702,7 @@ export function buildTheme(options: ThemeOptions): ThemeConfig {
         lightSiderBg: side.bg,
         // 毛玻璃时主区透明，露出 body 上的主题色背景
         bodyBg: glass ? "transparent" : surface.colorBgLayout,
-        headerBg: dark ? SURFACES.dark.colorBgContainer : WHITE,
+        headerBg: dark ? surface.colorBgContainer : WHITE,
       },
       Menu: {
         // 侧栏随主题：两套 Menu 主题都用同一组侧栏色，选中态是底色浅一档，不用整块主色
@@ -694,7 +796,7 @@ export function tokenToCssVars(options: ThemeOptions): Record<string, string> {
   for (const [key, value] of Object.entries(sidebarColors(options))) {
     vars[`--kit-sidebar-${toKebab(key)}`] = value;
   }
-  const glass = GLASS[options.resolved];
+  const glass = glassColors(options.accent, options.resolved);
   vars["--kit-glass-bg"] = glass.background;
   vars["--kit-glass-border"] = glass.border;
   vars["--kit-glass-shadow"] = glass.shadow;

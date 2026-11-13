@@ -2,6 +2,71 @@
 
 版本号遵循语义化版本：主版本号变化表示有不兼容的接口或视觉规范调整，次版本号表示新增主题 / 组件，修订号表示修复。
 
+## 1.3.0 · 2026-11-13
+
+按「绘境」（AI 出图应用）的使用摩擦点改进：补齐列表、缩略图、设置页、队列这类应用级组件，修复深色模式配色，文档与 1.2.0 的实际导出对齐。
+
+### 修复
+
+- **深色模式主区不随主题变化。** 选了极客蓝以外的主题后切到深色，侧栏跟随主题，但画布、`Panel`、毛玻璃背景、日志区、输入框底色始终是极客蓝的冷蓝墨色。原因是 `antd-theme.ts` 的深色表面（`SURFACES.dark`）、深色吸顶表头、日志底、深色侧栏的压暗色都是写死的极客蓝墨色。现在由 `surfaceColors(accent, "dark")` 从参考墨色按主题侧栏色的色相重新着色：低彩度、按 WCAG 相对亮度对齐参考值（对比度结论不随主题变化），新增主题不需要写任何深色色值。极客蓝与全部主题的浅色模式逐值不变。
+- 深色主题启动时首帧闪一下极客蓝画布：`ThemeProvider` 记下画布色（`localStorage` 的 `ui-kit:canvas`），`theme-init.js` 首帧前套用。
+- 失败行（`FILE_ROW_ERROR_CLASS`）里的 antd `Typography` 与中性 `Tag` 保留自己的颜色，盖过整行红字：现在自动继承行色（中性 Tag 去底、换危险描边）；带状态色的 Tag 保留语义色。不再需要手写 `text-inherit`。
+- 文档版本号仍写 1.1.0、目录树与组件速查表缺 1.2.0 的 `ThemeMenu` 等：README、AI_GUIDE 与 `index.ts` 导出逐项对齐。
+
+### 新增
+
+- `Workspace` 的 `asideFooter`：右栏底部常驻区（进度 + 主按钮），右栏参数区单独滚动，参数再多主按钮也不会被挤出可视区。
+- `ListRow`：富列表行（序号、`leading` 缩略图槽、`title`、`meta`、`extra` 第二行起、`trailing` 行尾操作、`status="error"`、`selected`、`highlight` 定位高亮并滚到可见、多行高度）。`FileRow` 不变。
+- `Thumb` / `ThumbStrip` / `localImageSrc`：本地图缩略图（`convertFileSrc` + antd `Image`、加载 / 失败占位、固定比例裁切、受控预览）；缩略图条与参考图墙（可带移除角标、可翻页预览）。
+- `ImageGrid`：可选中图片瓦片，双击大图，大图里翻页同步选中（`Image.PreviewGroup` 受控）。
+- `RatioIcon` / `RatioPreview` / `parseRatio`：按真实宽高比画的小图示与比例 / 宫格预览框（可画每格裁切范围）。
+- `SettingsSection` / `SettingsScroll`：设置页表单分区与长表单滚动容器。
+- `EmptyState`：图标 + 文案 + 操作按钮的空状态 / 缺配置引导（基于 antd `Empty`）。
+- `NavBadge`：侧栏徽标，反色块（进行中）/ 弱数字（数量），各主题、深浅侧栏、悬停 / 选中底上都可读。
+- `StatusTag`：带图标的状态 Tag 预设（排队中 / 进行中 / 已完成 / 失败 / 警告 / 已取消）。
+- `FieldHint`：右栏参数提示 / 警示（11px + 图标）。
+- `AppShell` 的 `brand.mark` 可传 `{ src, alt? }` 图片（应用图标）。
+- `ThemeProvider`：`mode` 可受控；新增 `onAccentChange` / `onModeChange`（受控、非受控都会回调），便携版可把主题存进自己的设置文件。
+- `LogViewer` 的 `onClear` / `copyable`：右上角内置「复制全部」「清空」。`useLogger` 新增 `{ limit, channel }` 写法与 `pushLog(channel, …)`：React 之外写入，页面挂载前的日志先缓冲。另导出 `createLogEntry`、`logsToText`。
+- `useTaskEvents`（Tauri）：多任务队列的约定与 hook，订阅 `task-updated` / `task-removed`、先订阅后加载、加载期间的事件不丢。
+- `scripts/icon/`：`render-svg.swift`（AppKit 渲染透明底 PNG）、`check-alpha.swift`（逐尺寸校验四角透明）、`make-icons.sh`（一条龙）。
+- 导出 `surfaceColors`、`glassColors`、`ThemeProviderProps`、`WorkspaceProps`、`Brand` 等类型。
+- 审计新增：中性标签、失败行中性标签、缩略图占位图标、图片瓦片选中描边、比例预览描边与编号、参数提示 / 警示（含毛玻璃各色块）、导航徽标。每种组合 63 组（毛玻璃 143 组），42 种组合全过。
+- demo：「任务队列」「设置」两个页面模板（`demo/src/templates.tsx`），「组件一览」加入全部新组件，品牌标记字母 / 图片切换，`ThemeProvider` 回调演示。
+
+### 约定（design.md / AI_GUIDE）
+
+- 主按钮放 `asideFooter`；非批处理页的主按钮写「动词 + 对象」（「保存设置」「继续修改 · 这张」）。
+- 有状态的功能页常驻、用 `hidden` 切换，不要按路由卸载（日志、草稿、事件订阅会丢）。
+- 行尾操作最多 3 个图标按钮，其余收进「更多」菜单，删除放最后。
+- 右栏参数提示 / 警示用 `FieldHint`，不在 300px 右栏里放 `Alert`。
+- 「控件一律用 antd」的例外写明：可选中卡片用原生 `button`（照 `ImageGrid` / `ThemePicker`）；内联 `style` 只给运行时算出的尺寸、比例、列数与要原样展示的色块。
+- SVG 用 `fill-*` / `stroke-*` token 类；示意图配色约定。
+- 设置页排版规范（分区、草稿 / 保存 / 放弃修改、外观即时生效）。
+- 应用图标：macOS 留边规范；`qlmanage` 渲染 SVG 会垫白底，不要用。
+- AI_GUIDE：tauri 依赖需 `features = ["protocol-asset"]`；opener 插件与 `opener:default` 权限；自检第 5 条改为检查静态导入的 `message` / `notification` 与 `Modal.confirm(` 等，不再误伤 `App.useApp()` 的 `message.success(`；Rust 端「多任务队列」约定与批处理并列。
+
+### 不兼容变化
+
+都是视觉或边角行为，没有删除或改名任何导出，所以定为次版本 1.3.0（深色配色的变化属于修复）：
+
+- **深色模式下，极客蓝以外的 6 个主题主区颜色变了**（画布、卡片、浮层、描边、文字基色、毛玻璃背景、日志等级色可能差一档）。对比度结论不变，审计全过。截图对比、视觉回归测试需要更新基线。
+- **失败行里的 `Typography` 与中性 `Tag` 变成红字**（原来保留自己的颜色）。之前手写的 `text-inherit` 可以删，留着也无害。
+- `ThemeProvider` 传了 `accent`（受控）时，`setAccent` 不再偷偷写 `localStorage` / 内部状态，只调用 `onAccentChange`；`mode` 受控时同理。
+- `ThemeProvider` 会在 `<html>` 上写内联 `background-color`（当前画布色）。项目里若给 `html` 设过背景色，会被覆盖。
+- `theme-init.js` 更新了，需要重新拷到 `public/`。
+- `LogViewer` 传了 `onClear` / `copyable` 时，`className` 作用在外层容器上（不传时与 1.2.0 相同）。
+
+### 从 1.2.0 升级
+
+1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/`，再 `cp src/ui-kit/theme-init.js public/theme-init.js`。
+2. 确认 `src-tauri/Cargo.toml` 的 tauri 依赖有 `features = ["protocol-asset"]`、capabilities 里有 `opener:default`（用到打开链接 / 在访达中显示时）。
+3. 右栏主按钮：把 `aside` 里 `<div className="mt-auto …">进度 + 主按钮</div>` 移到 `Workspace` 的 `asideFooter`；参数多的页面把参数卡片改成 `<Panel fill className="min-h-0 flex-1">` + `SettingsScroll`。
+4. 日志：删掉 Panel `extra` 里自写的「清空日志」按钮，改成 `<LogViewer logs={logs} onClear={clear} />`。
+5. 自写组件换成 kit 组件（可选，逐个换）：任务行 → `ListRow` + `StatusTag`；缩略图 → `Thumb`；参考图墙 → `ThumbStrip columns={4} onRemove`；图库瓦片 → `ImageGrid`；比例图示 → `RatioIcon` / `RatioPreview`；设置分区 → `SettingsSection` / `SettingsScroll`；侧栏徽标 → `NavBadge`；大号空状态 → `EmptyState`。
+6. 主题存在自己设置文件里的项目：把同步逻辑换成 `ThemeProvider` 的 `accent` / `mode` 受控 + `onAccentChange` / `onModeChange`。
+7. `demo` 目录下（或项目里）跑一遍 `npm run build`；改过颜色的项目跑 `npm run check:contrast`；深色模式逐个主题看一遍。
+
 ## 1.2.0 · 2026-10-27
 
 ### 新增

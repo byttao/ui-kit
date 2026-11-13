@@ -8,7 +8,8 @@
 
 @layer base {
   /* 首帧兜底：ThemeProvider 挂载前变量还不存在，只有画布色需要先对。
-     这两个值须与 antd-theme.ts 的 colorBgLayout 一致。 */
+     这两个值是浅色与极客蓝深色的 colorBgLayout；其余主题的深色画布由 theme-init.js
+     按上次记下的颜色（ui-kit:canvas）写在 <html> 的内联样式上，覆盖这里。 */
   html {
     background-color: #f4f6fa;
   }
@@ -132,5 +133,25 @@
   .kit-glass-inset .ant-table-thead > tr > th,
   .kit-glass-inset .ant-table-thead > tr > td {
     background: var(--kit-glass-inset-header);
+  }
+
+  /* 失败行（FILE_ROW_ERROR_CLASS / ListRow status="error"）里的 antd 元素：
+     Typography 自带颜色，默认（中性）Tag 自带灰底黑字，都会盖过整行的红字。
+     这里让它们继承行色：普通文字变成同一档红字；中性 Tag 去底、描边换成危险描边。
+     带状态色的 Tag（success / processing / warning / error 及预设色）保留自己的语义色。 */
+  .kit-row-failed .ant-typography:not(.ant-typography-success):not(.ant-typography-warning),
+  .kit-row-failed .ant-typography-secondary,
+  .kit-row-failed .ant-typography-tertiary {
+    color: inherit;
+  }
+  .kit-row-failed .ant-tag:not(.ant-tag-success):not(.ant-tag-processing):not(.ant-tag-warning):not(.ant-tag-error):not(.ant-tag-blue):not(.ant-tag-green):not(.ant-tag-gold):not(.ant-tag-red):not(.ant-tag-orange):not(.ant-tag-volcano):not(.ant-tag-purple):not(.ant-tag-magenta):not(.ant-tag-cyan):not(.ant-tag-geekblue):not(.ant-tag-lime):not(.ant-tag-yellow) {
+    color: inherit;
+    background: transparent;
+    border-color: var(--ant-color-error-border);
+  }
+
+  /* 定位高亮（ListRow highlight）：主色内描边，不改底色，选中 / 失败底色仍可辨 */
+  .kit-row-highlight {
+    box-shadow: inset 0 0 0 2px var(--ant-color-primary);
   }
 }

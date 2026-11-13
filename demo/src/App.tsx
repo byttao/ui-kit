@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import {
   AppstoreOutlined,
+  OrderedListOutlined,
+  SettingOutlined,
   CheckCircleOutlined,
   ClearOutlined,
   ClockCircleOutlined,
@@ -38,8 +40,10 @@ import {
 import {
   AppShell,
   DEFAULTS,
+  NavBadge,
   THEMES,
   ThemePicker,
+  UI_KIT_VERSION,
   DropZone,
   FileRow,
   ListWell,
@@ -54,36 +58,33 @@ import {
   Workspace,
   useLogger,
   useTheme,
+  type Accent,
   type BatchProgress,
   type NavItem,
   type SidebarStyle,
   type ThemeMode,
 } from "@kit";
 import { auditAll, auditTheme, type AuditRow } from "@kit/lib/audit";
+import { NewComponents, QueuePage, SettingsPage } from "./templates";
 
-type PageKey = "convert" | "crop" | "components" | "contrast";
-
-const NAV: NavItem<PageKey>[] = [
-  { key: "convert", label: "图片转换", icon: <SwapOutlined />, section: "图片处理" },
-  { key: "crop", label: "图片裁切", icon: <ScissorOutlined /> },
-  { key: "components", label: "组件一览", icon: <AppstoreOutlined />, section: "设计系统" },
-  { key: "contrast", label: "对比度", icon: <EyeOutlined /> },
-];
+type PageKey = "convert" | "crop" | "queue" | "settings" | "components" | "contrast";
 
 const SAMPLE_FILES = ["1299.PNG", "1300.PNG", "1303.PNG", "商品主图-正面.jpg", "详情页-尺码表.png"];
 
 export function App() {
   const [sidebar, setSidebar] = useState<SidebarStyle>(DEFAULTS.sidebar);
   const [glass, setGlass] = useState<boolean>(DEFAULTS.glass);
+  // 演示 1.3.0 的 onAccentChange / onModeChange：便携版可以在这里把主题写进自己的设置文件
+  const [lastChange, setLastChange] = useState("（还没有切换）");
 
   return (
-    <ThemeProvider sidebar={sidebar} glass={glass}>
-      <Shell
-        sidebar={sidebar}
-        setSidebar={setSidebar}
-        glass={glass}
-        setGlass={setGlass}
-      />
+    <ThemeProvider
+      sidebar={sidebar}
+      glass={glass}
+      onAccentChange={(accent: Accent) => setLastChange(`onAccentChange("${accent}")`)}
+      onModeChange={(mode: ThemeMode) => setLastChange(`onModeChange("${mode}")`)}
+    >
+      <Shell sidebar={sidebar} setSidebar={setSidebar} glass={glass} setGlass={setGlass} lastChange={lastChange} />
     </ThemeProvider>
   );
 }
@@ -93,20 +94,35 @@ interface ShellProps {
   setSidebar: (value: SidebarStyle) => void;
   glass: boolean;
   setGlass: (value: boolean) => void;
+  lastChange: string;
 }
 
 function Shell(props: ShellProps) {
   const [page, setPage] = useState<PageKey>("convert");
+  const [imageBrand, setImageBrand] = useState(false);
+
+  const nav: NavItem<PageKey>[] = [
+    { key: "convert", label: "图片转换", icon: <SwapOutlined />, section: "图片处理" },
+    { key: "crop", label: "图片裁切", icon: <ScissorOutlined /> },
+    { key: "queue", label: "任务队列", icon: <OrderedListOutlined />, section: "1.3.0 模板", badge: <NavBadge count={2} /> },
+    { key: "settings", label: "设置", icon: <SettingOutlined /> },
+    { key: "components", label: "组件一览", icon: <AppstoreOutlined />, section: "设计系统", badge: <NavBadge count={18} tone="muted" /> },
+    { key: "contrast", label: "对比度", icon: <EyeOutlined /> },
+  ];
 
   return (
     <AppShell
-      brand={{ mark: "P", name: "PigResize", subtitle: "图片批量处理" }}
-      nav={NAV}
+      brand={{
+        mark: imageBrand ? { src: "/samples/forest.svg", alt: "" } : "P",
+        name: "PigResize",
+        subtitle: "图片批量处理",
+      }}
+      nav={nav}
       active={page}
       onNavigate={setPage}
       sidebarFooter={
         <>
-          <span>版本 V1.6.1</span>
+          <span>ui-kit {UI_KIT_VERSION}</span>
           <span className="flex items-center gap-1">
             <ThemeMenu />
             <ThemeToggle />
@@ -114,9 +130,21 @@ function Shell(props: ShellProps) {
         </>
       }
     >
-      {page === "convert" && <ConvertPage />}
-      {page === "crop" && <CropPage />}
-      {page === "components" && <ComponentsPage {...props} />}
+      {/* 页面常驻、用 hidden 切换：各页的日志、草稿、事件订阅不丢（design.md「页面切换」） */}
+      <div className={page === "convert" ? "h-full" : "hidden"}>
+        <ConvertPage />
+      </div>
+      <div className={page === "crop" ? "h-full" : "hidden"}>
+        <CropPage />
+      </div>
+      <div className={page === "queue" ? "h-full" : "hidden"}>
+        <QueuePage />
+      </div>
+      <div className={page === "settings" ? "h-full" : "hidden"}>
+        <SettingsPage />
+      </div>
+      {/* 内容型页面无状态可丢，按需挂载 */}
+      {page === "components" && <ComponentsPage {...props} imageBrand={imageBrand} setImageBrand={setImageBrand} />}
       {page === "contrast" && <ContrastPage />}
     </AppShell>
   );
@@ -135,7 +163,7 @@ function ConvertPage() {
   const [preset, setPreset] = useState("1440");
   const [progress, setProgress] = useState<BatchProgress | null>(null);
   const [failed, setFailed] = useState<Set<string>>(new Set());
-  const { logs, log } = useLogger();
+  const { logs, log, clear } = useLogger();
   const { message } = AntApp.useApp();
 
   // 演示部分失败：1303.PNG 失败，成功的移出列表，失败的留下并标红，便于重试
@@ -172,21 +200,21 @@ function ConvertPage() {
     <Page>
       <Workspace
         aside={
+          <Panel title="转换样式">
+            <Radio.Group
+              orientation="vertical"
+              value={preset}
+              onChange={(e) => setPreset(e.target.value)}
+              options={SIZE_PRESETS}
+            />
+          </Panel>
+        }
+        asideFooter={
           <>
-            <Panel title="转换样式">
-              <Radio.Group
-                orientation="vertical"
-                value={preset}
-                onChange={(e) => setPreset(e.target.value)}
-                options={SIZE_PRESETS}
-              />
-            </Panel>
-            <div className="mt-auto flex flex-col gap-3">
-              <ProgressPanel progress={progress} />
-              <Button type="primary" block disabled={!files.length || !!progress} onClick={run}>
-                {progress ? "处理中…" : `开始转换 · ${files.length} 张`}
-              </Button>
-            </div>
+            <ProgressPanel progress={progress} />
+            <Button type="primary" block disabled={!files.length || !!progress} onClick={run}>
+              {progress ? "处理中…" : `开始转换 · ${files.length} 张`}
+            </Button>
           </>
         }
       >
@@ -237,7 +265,7 @@ function ConvertPage() {
       </Workspace>
 
       <Panel title="处理日志" size="small" className="h-[170px] shrink-0" fill>
-        <LogViewer logs={logs} />
+        <LogViewer logs={logs} onClear={clear} />
       </Panel>
     </Page>
   );
@@ -337,7 +365,15 @@ function CropPage() {
 }
 
 /** 组件与主题一览：切换明暗、主题预设与侧栏，检查 antd 组件在各组合下的表现。 */
-function ComponentsPage({ sidebar, setSidebar, glass, setGlass }: ShellProps) {
+function ComponentsPage({
+  sidebar,
+  setSidebar,
+  glass,
+  setGlass,
+  lastChange,
+  imageBrand,
+  setImageBrand,
+}: ShellProps & { imageBrand: boolean; setImageBrand: (value: boolean) => void }) {
   const { mode, setMode, accent, setAccent } = useTheme();
   const { message, modal } = AntApp.useApp();
   const [open, setOpen] = useState(false);
@@ -393,8 +429,23 @@ function ComponentsPage({ sidebar, setSidebar, glass, setGlass }: ShellProps) {
           <Form.Item label="毛玻璃" extra="卡片变成半透明玻璃面，背景换成主题配色渐变" className="mb-0">
             <Switch checked={glass} onChange={setGlass} />
           </Form.Item>
+          <Form.Item label="品牌标记" extra="brand.mark 传字母（反色块）或 { src } 图片" className="mb-0">
+            <Segmented
+              value={imageBrand ? "image" : "letter"}
+              onChange={(v) => setImageBrand(v === "image")}
+              options={[
+                { value: "letter", label: "字母" },
+                { value: "image", label: "图片" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="ThemeProvider 回调" extra="onAccentChange / onModeChange 最近一次" className="mb-0 col-span-2">
+            <Typography.Text code>{lastChange}</Typography.Text>
+          </Form.Item>
         </Form>
       </Panel>
+
+      <NewComponents />
 
       <Panel title="按钮">
         <Space wrap>

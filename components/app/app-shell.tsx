@@ -9,12 +9,35 @@ export interface NavItem<K extends string = string> {
   icon?: React.ReactNode;
   /** 分组标题，写在该组第一项上 */
   section?: string;
-  /** 右侧计数徽标 */
+  /** 右侧徽标：用 `<NavBadge count={n} />`（反色块）或 `<NavBadge tone="muted" />`（纯数字） */
   badge?: React.ReactNode;
 }
 
+/** 品牌标记用图片（应用图标）时的写法。 */
+export interface BrandImage {
+  /** 图片地址：import 进来的 png / svg（`import icon from "./assets/app-icon.png"`） */
+  src: string;
+  alt?: string;
+}
+
+export interface Brand {
+  /**
+   * 品牌标记：
+   *   - 一个字母 / 单色 SVG（currentColor）：画在 40px 反色块里，随主题变色；
+   *   - `{ src }` 图片：直接显示应用图标（不加反色块）。图标自带底板与留边时，
+   *     用不带 macOS 留边的版本（底板铺满画布），否则在 40px 里显得偏小。
+   */
+  mark: React.ReactNode | BrandImage;
+  name: string;
+  subtitle?: string;
+}
+
+function isBrandImage(mark: Brand["mark"]): mark is BrandImage {
+  return typeof mark === "object" && mark !== null && !React.isValidElement(mark) && "src" in mark;
+}
+
 interface AppShellProps<K extends string> {
-  brand: { mark: React.ReactNode; name: string; subtitle?: string };
+  brand: Brand;
   nav: NavItem<K>[];
   active: K;
   onNavigate: (key: K) => void;
@@ -98,10 +121,19 @@ export function AppShell<K extends string>({
       >
         <div className="flex h-full flex-col text-sidebar-text">
           <div className={cn("flex shrink-0 items-center gap-3 pb-5 pt-6", compact ? "px-4" : "px-6")}>
-            {/* 反色块：侧栏可能就是主色（如森翠），用侧栏文字色做底才保证看得见 */}
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-sidebar-active-text text-xl font-strong text-sidebar">
-              {brand.mark}
-            </span>
+            {isBrandImage(brand.mark) ? (
+              <img
+                src={brand.mark.src}
+                alt={brand.mark.alt ?? ""}
+                draggable={false}
+                className="size-10 shrink-0 rounded-lg object-contain"
+              />
+            ) : (
+              // 反色块：侧栏可能就是主色（如森翠），用侧栏文字色做底才保证看得见
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-sidebar-active-text text-xl font-strong text-sidebar">
+                {brand.mark}
+              </span>
+            )}
             <div className="min-w-0">
               <div className="truncate text-xl font-strong text-sidebar-active-text">{brand.name}</div>
               {brand.subtitle && <div className="truncate text-sm text-sidebar-muted">{brand.subtitle}</div>}
@@ -215,28 +247,47 @@ export function Page({
   );
 }
 
+export interface WorkspaceProps {
+  className?: string;
+  /** 右栏内容：设置卡片（`Panel`）。只传 aside 时整个右栏一起滚动（1.2.0 行为） */
+  aside: React.ReactNode;
+  /**
+   * 右栏底部常驻区：进度 + 主按钮。传了它，右栏变成「aside 区内部滚动 + 底部常驻」，
+   * 参数再多主按钮也不会被挤出可视区。aside 里的参数卡片用 `<Panel fill className="min-h-0 flex-1">`
+   * 并把长表单放进 `SettingsScroll`，或者直接放多个普通 Panel（由右栏整体滚动）。
+   */
+  asideFooter?: React.ReactNode;
+  /** 右栏宽度，默认 300；同一应用所有页面保持一致 */
+  asideWidth?: number;
+  children: React.ReactNode;
+}
+
 /**
  * 两栏工作区：左侧主内容自适应，右侧设置栏固定宽度。
  * 同一应用里所有页面应使用相同的 aside 宽度，保证切换时右栏不跳动。
+ *
+ * @example
+ * <Workspace
+ *   aside={<Panel fill title="参数" className="min-h-0 flex-1"><SettingsScroll>…</SettingsScroll></Panel>}
+ *   asideFooter={<><ProgressPanel progress={progress} /><Button type="primary" block>开始转换 · 5 张</Button></>}
+ * >
  */
-export function Workspace({
-  className,
-  aside,
-  asideWidth = 300,
-  children,
-}: {
-  className?: string;
-  aside: React.ReactNode;
-  asideWidth?: number;
-  children: React.ReactNode;
-}) {
+export function Workspace({ className, aside, asideFooter, asideWidth = 300, children }: WorkspaceProps) {
   return (
     <div
       className={cn("grid min-h-0 flex-1 gap-5", className)}
+      // 右栏宽度是参数，只能用内联 style
       style={{ gridTemplateColumns: `minmax(0,1fr) ${asideWidth}px` }}
     >
       <div className="flex min-h-0 min-w-0 flex-col">{children}</div>
-      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">{aside}</div>
+      {asideFooter === undefined ? (
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">{aside}</div>
+      ) : (
+        <div className="flex min-h-0 flex-col gap-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">{aside}</div>
+          <div className="flex shrink-0 flex-col gap-3">{asideFooter}</div>
+        </div>
+      )}
     </div>
   );
 }

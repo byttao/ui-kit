@@ -72,9 +72,12 @@ export function FileRow({ index, selected, status, trailing, className, children
   );
 }
 
-/** 失败行的样式：浅红底 + 红字（与 antd 描边危险按钮同一档）；悬停时底色与文字一起加深一档，保持 ≥ 4.5:1。 */
+/**
+ * 失败行的样式：浅红底 + 红字（与 antd 描边危险按钮同一档）；悬停时底色与文字一起加深一档，保持 ≥ 4.5:1。
+ * kit-row-failed（styles/base.css）让行内的 antd Typography 与中性 Tag 继承行色；带状态色的 Tag 保留语义色。
+ */
 export const FILE_ROW_ERROR_CLASS =
-  "bg-error-bg text-error-text hover:bg-error-bg-hover hover:text-error-text-hover";
+  "kit-row-failed bg-error-bg text-error-text hover:bg-error-bg-hover hover:text-error-text-hover";
 
 /** 失败标记：图标 + 文字，状态不只靠颜色表达。颜色继承所在行（FILE_ROW_ERROR_CLASS）。 */
 export function FailedMark({ label = "失败" }: { label?: string }) {

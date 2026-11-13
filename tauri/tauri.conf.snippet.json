@@ -1,5 +1,8 @@
 {
-  "//": "ui-kit 推荐的窗口与安全配置片段，合并进 src-tauri/tauri.conf.json 的 app 字段。",
+  "//": "ui-kit 推荐的窗口与安全配置片段，合并进 src-tauri/tauri.conf.json 的 app 字段。以 // 开头的键是说明，合并时删掉。",
+  "//cargo": "assetProtocol 需要 src-tauri/Cargo.toml 里 tauri 依赖开启 protocol-asset：tauri = { version = \"2\", features = [\"protocol-asset\"] }。不加会编译报错；加了但没开 assetProtocol / CSP 没放行 asset:，convertFileSrc 的图片是空白且不报错。",
+  "//plugins": "文件选择框：npm run tauri add dialog（权限 dialog:default）。打开链接、在访达 / 资源管理器中显示文件：npm run tauri add opener（权限 opener:default；opener:default 已含 openUrl（http/https/mailto/tel）与 revealItemInDir；用默认程序打开本地文件的 openPath 要另加 opener:allow-open-path 并配置路径范围）。tauri add 会同时写 Cargo.toml、lib.rs 注册与 capabilities/default.json。",
+  "//capabilities": "src-tauri/capabilities/default.json 的 permissions 至少包含：[\"core:default\", \"dialog:default\", \"opener:default\"]。",
   "app": {
     "windows": [
       {
