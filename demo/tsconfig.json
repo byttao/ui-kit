@@ -37,6 +37,7 @@
     "../antd-theme.ts",
     "../theme.tsx",
     "../components",
-    "../tauri"
+    "../tauri",
+    "../recipes"
   ]
 }

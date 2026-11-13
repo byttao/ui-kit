@@ -1,7 +1,7 @@
 // ui-kit 出口：只有应用级组件与主题。控件（Button、Input、Select、Table、Modal…）直接从 "antd" 导入。
 
 /** 当前 ui-kit 版本，与 package.json 一致。 */
-export const UI_KIT_VERSION = "1.3.0";
+export const UI_KIT_VERSION = "1.4.0";
 
 export { cn } from "./lib/cn";
 export {
@@ -64,10 +64,13 @@ export {
 } from "./components/app/log-viewer";
 export { ProgressPanel, type BatchProgress } from "./components/app/progress-panel";
 export { ListWell, FileRow, FailedMark, FILE_ROW_ERROR_CLASS, fileName } from "./components/app/file-list";
-export { ListRow, type ListRowProps } from "./components/app/list-row";
+export { ListRow, useRowFlash, ROW_FLASH_MS, type ListRowProps } from "./components/app/list-row";
+export { LinkTag, type LinkTagProps } from "./components/app/link-tag";
+export { ErrorBoundary, type ErrorBoundaryProps } from "./components/app/error-boundary";
 export {
   Thumb,
   ThumbStrip,
+  ImageBadge,
   localImageSrc,
   type ThumbProps,
   type ThumbSize,
@@ -78,7 +81,11 @@ export { ImageGrid, type ImageGridItem, type ImageGridProps } from "./components
 export {
   RatioIcon,
   RatioPreview,
+  RatioSelect,
+  ratioOptionLabel,
   parseRatio,
+  type RatioOption,
+  type RatioSelectProps,
   type RatioValue,
   type RatioIconProps,
   type RatioPreviewProps,
@@ -100,4 +107,10 @@ export { ThemePicker } from "./components/app/theme-picker";
 // Tauri 专用
 export { useFileDrop, filterByExtension, IMAGE_EXTENSIONS } from "./tauri/useFileDrop";
 export { useBatchProgress } from "./tauri/useBatchProgress";
-export { useTaskEvents, type UseTaskEventsOptions } from "./tauri/useTaskEvents";
+export {
+  useTaskEvents,
+  createMockTaskBackend,
+  type UseTaskEventsOptions,
+  type TaskListen,
+  type MockTaskBackend,
+} from "./tauri/useTaskEvents";

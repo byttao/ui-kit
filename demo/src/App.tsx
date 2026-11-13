@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
   AppstoreOutlined,
+  PictureOutlined,
   OrderedListOutlined,
   SettingOutlined,
   CheckCircleOutlined,
@@ -20,7 +21,6 @@ import {
   App as AntApp,
   Button,
   Checkbox,
-  Empty,
   Form,
   Input,
   InputNumber,
@@ -41,33 +41,40 @@ import {
   AppShell,
   DEFAULTS,
   NavBadge,
+  ErrorBoundary,
+  useTaskEvents,
   THEMES,
   ThemePicker,
   UI_KIT_VERSION,
   DropZone,
-  FileRow,
   ListWell,
   LogViewer,
   Page,
   PageHeader,
   Panel,
-  ProgressPanel,
   ThemeProvider,
   ThemeMenu,
   ThemeToggle,
   Workspace,
-  useLogger,
   useTheme,
   type Accent,
-  type BatchProgress,
   type NavItem,
   type SidebarStyle,
   type ThemeMode,
 } from "@kit";
 import { auditAll, auditTheme, type AuditRow } from "@kit/lib/audit";
-import { NewComponents, QueuePage, SettingsPage } from "./templates";
+import { BatchPage } from "@kit/recipes/batch-page";
+import { GalleryPage } from "@kit/recipes/gallery-page";
+import { QueuePage, type QueueTask } from "@kit/recipes/queue-page";
+import { SettingsPage } from "@kit/recipes/settings-page";
+import { createMockQueueApi, createMockSettingsApi, mockBatchBackend, tasksToGallery } from "@kit/recipes/mock";
+import { NewComponents } from "./templates";
 
-type PageKey = "convert" | "crop" | "queue" | "settings" | "components" | "contrast";
+// 配方页面的模拟数据层：整个 demo 共用一份（队列与图库看到的是同一批任务）
+const queueApi = createMockQueueApi();
+const settingsApi = createMockSettingsApi();
+
+type PageKey = "batch" | "queue" | "gallery" | "settings" | "crop" | "components" | "contrast";
 
 const SAMPLE_FILES = ["1299.PNG", "1300.PNG", "1303.PNG", "商品主图-正面.jpg", "详情页-尺码表.png"];
 
@@ -98,15 +105,23 @@ interface ShellProps {
 }
 
 function Shell(props: ShellProps) {
-  const [page, setPage] = useState<PageKey>("convert");
+  const [page, setPage] = useState<PageKey>("batch");
   const [imageBrand, setImageBrand] = useState(false);
+  const { message } = AntApp.useApp();
+  // 队列与图库共用同一个模拟后端；侧栏徽标、图库内容都从任务列表派生
+  const { tasks } = useTaskEvents<QueueTask>({ load: queueApi.load, listen: queueApi.listen });
+  const gallery = useMemo(() => tasksToGallery(tasks), [tasks]);
+  const running = tasks.filter((t) => t.status === "running" || t.status === "queued").length;
+  const [gallerySelected, setGallerySelected] = useState<string | null>(null);
+  const [queueFocus, setQueueFocus] = useState<{ id: string; nonce: number } | null>(null);
 
   const nav: NavItem<PageKey>[] = [
-    { key: "convert", label: "图片转换", icon: <SwapOutlined />, section: "图片处理" },
-    { key: "crop", label: "图片裁切", icon: <ScissorOutlined /> },
-    { key: "queue", label: "任务队列", icon: <OrderedListOutlined />, section: "1.3.0 模板", badge: <NavBadge count={2} /> },
+    { key: "batch", label: "批处理", icon: <SwapOutlined />, section: "页面配方" },
+    { key: "queue", label: "任务队列", icon: <OrderedListOutlined />, badge: <NavBadge count={running} /> },
+    { key: "gallery", label: "图库", icon: <PictureOutlined />, badge: <NavBadge count={gallery.length} tone="muted" /> },
     { key: "settings", label: "设置", icon: <SettingOutlined /> },
-    { key: "components", label: "组件一览", icon: <AppstoreOutlined />, section: "设计系统", badge: <NavBadge count={18} tone="muted" /> },
+    { key: "crop", label: "表格变体", icon: <ScissorOutlined />, section: "其他示例" },
+    { key: "components", label: "组件一览", icon: <AppstoreOutlined />, section: "设计系统" },
     { key: "contrast", label: "对比度", icon: <EyeOutlined /> },
   ];
 
@@ -114,8 +129,8 @@ function Shell(props: ShellProps) {
     <AppShell
       brand={{
         mark: imageBrand ? { src: "/samples/forest.svg", alt: "" } : "P",
-        name: "PigResize",
-        subtitle: "图片批量处理",
+        name: "ui-kit 演示",
+        subtitle: "Tauri 桌面工具界面",
       }}
       nav={nav}
       active={page}
@@ -130,144 +145,61 @@ function Shell(props: ShellProps) {
         </>
       }
     >
-      {/* 页面常驻、用 hidden 切换：各页的日志、草稿、事件订阅不丢（design.md「页面切换」） */}
-      <div className={page === "convert" ? "h-full" : "hidden"}>
-        <ConvertPage />
+      {/* 有状态的页面常驻、用 hidden 切换：日志、草稿、事件订阅不丢（design.md「页面切换」） */}
+      <div className={page === "batch" ? "h-full" : "hidden"}>
+        <ErrorBoundary size="page">
+          <BatchPage backend={mockBatchBackend} active={page === "batch"} />
+        </ErrorBoundary>
+      </div>
+      <div className={page === "queue" ? "h-full" : "hidden"}>
+        <ErrorBoundary size="page">
+          <QueuePage
+            api={queueApi}
+            focus={queueFocus}
+            onOpenInGallery={(task) => {
+              const item = gallery.find((g) => g.taskId === task.id);
+              setGallerySelected(item?.key ?? null);
+              setPage("gallery");
+            }}
+          />
+        </ErrorBoundary>
+      </div>
+      <div className={page === "gallery" ? "h-full" : "hidden"}>
+        <ErrorBoundary size="page">
+          <GalleryPage
+            items={gallery}
+            selectedKey={gallerySelected}
+            onSelectedKeyChange={setGallerySelected}
+            onEdit={(item) => {
+              setPage("queue");
+              if (item.taskId) setQueueFocus({ id: item.taskId, nonce: Date.now() });
+              message.info("演示：在任务队列里点该任务的「继续修改」");
+            }}
+            onReveal={async (item) => {
+              message.info(`演示：在访达中显示 ${item.path}`);
+            }}
+            onRemove={async (item) => {
+              if (item.taskId) await queueApi.remove([item.taskId]);
+            }}
+            onLocateTask={(item) => {
+              setPage("queue");
+              if (item.taskId) setQueueFocus({ id: item.taskId, nonce: Date.now() });
+            }}
+          />
+        </ErrorBoundary>
+      </div>
+      <div className={page === "settings" ? "h-full" : "hidden"}>
+        <ErrorBoundary size="page">
+          <SettingsPage api={settingsApi} />
+        </ErrorBoundary>
       </div>
       <div className={page === "crop" ? "h-full" : "hidden"}>
         <CropPage />
-      </div>
-      <div className={page === "queue" ? "h-full" : "hidden"}>
-        <QueuePage />
-      </div>
-      <div className={page === "settings" ? "h-full" : "hidden"}>
-        <SettingsPage />
       </div>
       {/* 内容型页面无状态可丢，按需挂载 */}
       {page === "components" && <ComponentsPage {...props} imageBrand={imageBrand} setImageBrand={setImageBrand} />}
       {page === "contrast" && <ContrastPage />}
     </AppShell>
-  );
-}
-
-const SIZE_PRESETS = [
-  { value: "1440", label: "1440 方图" },
-  { value: "1440c", label: "1440 长图" },
-  { value: "800", label: "800 方图" },
-  { value: "product", label: "商品长图" },
-];
-
-/** 列表页模板：左侧列表 + 右侧设置栏 + 底部日志，对应 PigResize「图片转换」。 */
-function ConvertPage() {
-  const [files, setFiles] = useState<string[]>(SAMPLE_FILES);
-  const [preset, setPreset] = useState("1440");
-  const [progress, setProgress] = useState<BatchProgress | null>(null);
-  const [failed, setFailed] = useState<Set<string>>(new Set());
-  const { logs, log, clear } = useLogger();
-  const { message } = AntApp.useApp();
-
-  // 演示部分失败：1303.PNG 失败，成功的移出列表，失败的留下并标红，便于重试
-  const run = () => {
-    log(`开始处理 ${files.length} 张图片。`, "processing");
-    let index = 0;
-    const tick = () => {
-      index += 1;
-      const done = index > files.length;
-      setProgress({
-        current: Math.min(index, files.length),
-        total: files.length,
-        percent: done ? 100 : (index / files.length) * 100,
-        stage: done ? "完成" : "缩放",
-        file_name: done ? "" : files[index - 1],
-      });
-      if (done) {
-        const failedNow = files.filter((name) => name === "1303.PNG");
-        failedNow.forEach((name) => log(`[!] 处理失败 - ${name}`, "error"));
-        log(`已输出 ${files.length - failedNow.length} 张图片，${failedNow.length} 张失败，已留在列表中。`, "warning");
-        message.warning(`${failedNow.length} 张处理失败，已留在列表中`);
-        setFiles(failedNow);
-        setFailed(new Set(failedNow));
-        window.setTimeout(() => setProgress(null), 1500);
-        return;
-      }
-      log(`[*] 正在处理: ${files[index - 1]}`, "info");
-      window.setTimeout(tick, 400);
-    };
-    tick();
-  };
-
-  return (
-    <Page>
-      <Workspace
-        aside={
-          <Panel title="转换样式">
-            <Radio.Group
-              orientation="vertical"
-              value={preset}
-              onChange={(e) => setPreset(e.target.value)}
-              options={SIZE_PRESETS}
-            />
-          </Panel>
-        }
-        asideFooter={
-          <>
-            <ProgressPanel progress={progress} />
-            <Button type="primary" block disabled={!files.length || !!progress} onClick={run}>
-              {progress ? "处理中…" : `开始转换 · ${files.length} 张`}
-            </Button>
-          </>
-        }
-      >
-        <Panel
-          fill
-          className="flex-1"
-          title="待转换图片"
-          extra={
-            <Space size="small">
-              <Typography.Text type="secondary">{files.length} 张</Typography.Text>
-              <Button
-                type="link"
-                size="small"
-                disabled={!files.length}
-                onClick={() => {
-                  setFiles([]);
-                  setFailed(new Set());
-                }}
-              >
-                清空列表
-              </Button>
-            </Space>
-          }
-        >
-          <DropZone
-            active={false}
-            compact={files.length > 0}
-            onBrowse={() => {
-              setFiles(SAMPLE_FILES);
-              setFailed(new Set());
-            }}
-            hint="JPG、PNG、BMP、GIF · 可批量添加"
-          />
-          <ListWell>
-            {files.length === 0 ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="添加图片后会显示在这里" className="py-9" />
-            ) : (
-              <ul className="m-0 list-none p-0">
-                {files.map((name, index) => (
-                  <FileRow key={name} index={index + 1} status={failed.has(name) ? "error" : undefined}>
-                    {name}
-                  </FileRow>
-                ))}
-              </ul>
-            )}
-          </ListWell>
-        </Panel>
-      </Workspace>
-
-      <Panel title="处理日志" size="small" className="h-[170px] shrink-0" fill>
-        <LogViewer logs={logs} onClear={clear} />
-      </Panel>
-    </Page>
   );
 }
 

@@ -2,6 +2,54 @@
 
 版本号遵循语义化版本：主版本号变化表示有不兼容的接口或视觉规范调整，次版本号表示新增主题 / 组件，修订号表示修复。
 
+## 1.4.0 · 2026-11-13
+
+绘境升级到 1.3.0 后记下的问题（摩擦点第七、八节）全部处理；新增四个页面配方，AI_GUIDE 第 6 步改成「先选配方再写页面」。新增组件与参数、没有删除或改名任何导出，所以是次版本。
+
+### 新增
+
+- **页面配方** `recipes/`：批处理页、任务队列页、图库页、设置页，完整可运行（demo「页面配方」分组），数据层以 props 注入（`BatchBackend` / `QueueApi` / `SettingsApi` / 图库 `items`），拷到项目后换成 invoke 实现即可。`recipes/mock.ts` 是 demo / 测试用的内存数据层。AI_GUIDE 每个配方一章：何时用、骨架、状态与空态、主按钮、数据层与 Rust 端约定。
+- `RatioSelect`：比例 / 尺寸选择器（antd Select，选项带按真实比例画的小图示与尺寸说明）；`ratioOptionLabel` 可单独用在 Segmented / Radio 里。
+- `ErrorBoundary`：渲染出错时显示原因、「复制错误信息」与「重新加载」（`size="page"` 时是「重试」，只重建这一页）；`fallback` / `onError` 可自定义。
+- `LinkTag`：可点击的标签（跳转 / 定位），antd Tag + 按钮语义（role、可聚焦、回车 / 空格），`disabled` 表示目标已不存在。
+- `useRowFlash` / `ROW_FLASH_MS`：「定位并闪一下」，`flash(id)` 后行高亮 2 秒自动取消；目标在另一页时先切页再 flash 即可。
+- `ImageBadge`：叠在图片上的角标（实底卡片色 + 描边 + 正文色），任意图片、深浅主题下都看得清。
+- `ThumbStrip` 的 `ThumbItem` 新增 `caption`（图下常显说明，如 `#12-1`）与 `badge`（左上角标）。
+- `ImageGrid`：`selectedKey` 变化时自动把选中瓦片滚到可见（`scrollToSelected`，默认开）；`badgePlacement="top-left" | "bottom-left"`；瓦片带 `data-key`。
+- `useTaskEvents` 新增 `listen`（注入订阅函数）与 `enabled`；新增 `createMockTaskBackend()`：非 Tauri 环境（浏览器预览、组件测试）也能订阅与加载，不必伪造 `window.isTauri`。
+- 审计新增：图片角标、可点击标签悬停 / 不可用、缩略图说明。每种组合 67 组（毛玻璃 147 组），42 种组合全过。
+- demo：四个配方页（队列 ↔ 图库互相定位、`ErrorBoundary size="page"` 包住每页）；「组件一览」加入 `LinkTag` + `useRowFlash`、`ThumbStrip caption / badge`、`ImageGrid` 定位、`RatioSelect`、`ErrorBoundary` 演示。
+
+### 修复 / 补测
+
+- `scripts/icon/make-icons.sh` 在真实 Tauri 项目（绘境的副本）里完整跑通：渲染 → `npx tauri icon` → png / ico / icns 各尺寸四角透明校验全部通过。
+- `LogViewer`「复制全部」的成功路径已验证（复制内容为「时间 [等级] 内容」逐行，提示「已复制 N 条日志」）。
+
+### 约定（design.md / AI_GUIDE）
+
+- AI_GUIDE 第 5 步：主题受控时「读设置 → 受控主题」的完整入口写法，外层错误放进 state、由 ThemeProvider 里面的小组件用 `App.useApp().message` 提示；入口包 `ErrorBoundary`。
+- AI_GUIDE 第 6 步：先按「批处理 / 任务队列 / 图库 / 设置」选配方，再写页面。
+- 可点击标签用 `LinkTag`；定位高亮主色内描边 2 秒（图库用选中定位）；图片上的文字用 `ImageBadge`，不用 `bg-spotlight` / 半透明黑底 / 主色底。
+- `brand.mark` 两种情况写清：单色字形（字母 / currentColor SVG，套反色块）与彩色图标（`{ src }`，原样显示、不套色块，用不带留边的版本）。
+- `RatioPreview` 的两种语义：整张等分拆切不传 `cellRatio`（每张比例写进 caption）；只有「合成后每格再裁切」才传。
+- 错误兜底：入口一层、每个常驻功能页一层；事件回调与 Promise 里的异常用 try/catch。
+
+### 不兼容变化
+
+没有。行为上的细小差别：
+
+- `ImageGrid` 默认会在 `selectedKey` 变化时滚动列表；不想要时传 `scrollToSelected={false}`。
+
+### 从 1.3.0 升级
+
+1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git --exclude .claude <ui-kit>/ src/ui-kit/`（`theme-init.js` 本版未改，不用重拷）。`recipes/` 会一起拷进来，不引用不会进包；不想要可以加 `--exclude recipes`。
+2. 自写的错误边界换成 kit 的 `ErrorBoundary`（放在 `ThemeProvider` 里面）；常驻功能页可再包 `<ErrorBoundary size="page">`。
+3. 自写的定位计时器换成 `useRowFlash`；`Tag` 上手写的 `role="button"` / `tabIndex` / `onKeyDown` 换成 `LinkTag`。
+4. 自写的「缩略图 + 下方编号」条换成 `ThumbStrip` 的 `caption`；图片角标换成 `ImageBadge`；图库外层按 `[aria-pressed]` 查找再滚动的代码可以删（`ImageGrid` 自带）。
+5. 比例下拉换成 `RatioSelect`（选项 `{ value, size }`）。
+6. 为测试伪造 `window.isTauri` 的地方改成 `useTaskEvents({ listen: backend.listen, load: backend.load })` + `createMockTaskBackend()`。
+7. 跑 `npm run build`、`antd lint`；改过颜色的跑 `npm run check:contrast`。
+
 ## 1.3.0 · 2026-11-13
 
 按「绘境」（AI 出图应用）的使用摩擦点改进：补齐列表、缩略图、设置页、队列这类应用级组件，修复深色模式配色，文档与 1.2.0 的实际导出对齐。

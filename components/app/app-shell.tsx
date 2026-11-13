@@ -22,10 +22,13 @@ export interface BrandImage {
 
 export interface Brand {
   /**
-   * 品牌标记：
-   *   - 一个字母 / 单色 SVG（currentColor）：画在 40px 反色块里，随主题变色；
-   *   - `{ src }` 图片：直接显示应用图标（不加反色块）。图标自带底板与留边时，
-   *     用不带 macOS 留边的版本（底板铺满画布），否则在 40px 里显得偏小。
+   * 品牌标记，两种情况：
+   *   - **单色字形**（一个字母，或 `fill="currentColor"` 的单色 SVG 组件）：画在 40px 反色块里
+   *     （侧栏文字色做底、侧栏底色画形），随主题、深浅自动变色。适合没有彩色图标、或想让侧栏统一的应用。
+   *   - **彩色图标**（`{ src, alt }`，import 进来的 png / svg）：原样显示、**不套反色块**，
+   *     所以透明圆角处不会露出色块。用不带 macOS 留边的版本（底板铺满画布，可另导一张 brand-mark.png），
+   *     否则 40px 里只剩约 32px。图标底板在深浅侧栏上都要看得清（浅色底板在浅色侧栏上要有描边或阴影）。
+   *   不要把彩色图标的 `<img>` 当 ReactNode 传进来：那会被套进反色块。
    */
   mark: React.ReactNode | BrandImage;
   name: string;

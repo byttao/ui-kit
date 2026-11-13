@@ -116,6 +116,10 @@ export interface ThumbItem {
   key?: string;
   path: string;
   alt?: string;
+  /** 图下常显的说明（如编号「#12-1」、尺寸），11px 说明文字色，单行截断 */
+  caption?: React.ReactNode;
+  /** 图片左上角的角标（如序号），用 `<ImageBadge>`，见 design.md「图片上的角标」 */
+  badge?: React.ReactNode;
 }
 
 export interface ThumbStripProps {
@@ -135,12 +139,13 @@ export interface ThumbStripProps {
 }
 
 /**
- * 小缩略图条 / 缩略图墙：一排（或 N 列）本地图，可预览翻页、可带移除角标。
+ * 小缩略图条 / 缩略图墙：一排（或 N 列）本地图，可预览翻页、可带移除角标、图下说明、左上角标。
  * 用在任务行的「拆切后各张」、右栏的「参考图」等位置。
  *
  * @example
  * <ThumbStrip items={task.files} />                                   // 一排 40px
  * <ThumbStrip items={refs} columns={4} onRemove={removeRef} showName />  // 参考图墙
+ * <ThumbStrip items={parts.map((p, i) => ({ path: p, caption: `#${n}-${i + 1}` }))} />  // 常显编号
  */
 export function ThumbStrip({
   items,
@@ -171,13 +176,17 @@ export function ThumbStrip({
           />
         );
         return (
-          <li key={item.key} className="relative">
+          <li key={item.key} className={cn("relative", item.caption !== undefined && "flex min-w-0 flex-col items-center gap-0.5")}>
             {showName ? (
               <Tooltip title={name}>
-                <span className="block">{thumb}</span>
+                <span className={cn("block", grid && "w-full")}>{thumb}</span>
               </Tooltip>
             ) : (
               thumb
+            )}
+            {item.badge && <span className="pointer-events-none absolute left-1 top-1">{item.badge}</span>}
+            {item.caption !== undefined && (
+              <span className="max-w-full truncate text-sm tabular-nums text-text-tertiary">{item.caption}</span>
             )}
             {onRemove && (
               <Tooltip title="移除">
@@ -197,4 +206,24 @@ export function ThumbStrip({
     </ul>
   );
   return preview ? <Image.PreviewGroup>{content}</Image.PreviewGroup> : content;
+}
+
+/**
+ * 叠在图片上的角标（编号、张数、模型名）：实底卡片色 + 描边 + 正文色，任意图片、深浅主题下都看得清。
+ * 不要用 `bg-spotlight`（深色主题下是浅底，配白字不够）、半透明黑底或主色底（主题可能就是图片的主色）。
+ *
+ * @example
+ * <ImageGrid items={items.map((it) => ({ ...it, badge: <ImageBadge>#{it.number}</ImageBadge> }))} badgePlacement="top-left" />
+ */
+export function ImageBadge({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-sm border border-border bg-container px-1 text-sm leading-[18px] tabular-nums text-text",
+        className
+      )}
+    >
+      {children}
+    </span>
+  );
 }

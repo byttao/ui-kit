@@ -123,3 +123,55 @@ export const ListRow = React.forwardRef<HTMLLIElement, ListRowProps>(function Li
     </li>
   );
 });
+
+/** 定位高亮的推荐时长：够用户看清是哪一行，又不会一直占着描边。 */
+export const ROW_FLASH_MS = 2000;
+
+/**
+ * 「定位并闪一下」：跳到某条记录时调用 `flash(key)`，行在 `duration` 毫秒内 `highlight`，之后自动取消。
+ * ListRow 在 highlight 变成 true 时会 scrollIntoView，所以不需要另写滚动。
+ *
+ * - 连续 flash 同一个 key 会重新闪（先取消再在下一帧设上）。
+ * - 目标在另一页（`hidden` 常驻的页面）时：先切页，再 flash —— flash 内部等 50ms，页面已可见，滚动才生效。
+ * - 图库瓦片用 `ImageGrid` 的 `selectedKey`（自带滚到可见），不需要这个 hook。
+ *
+ * @example
+ * const { flashKey, flash } = useRowFlash();
+ * const jumpTo = (id: string) => { setPage("queue"); flash(id); };
+ * <ListRow key={t.id} highlight={flashKey === t.id} … />
+ */
+export function useRowFlash(duration = ROW_FLASH_MS) {
+  const [flashKey, setFlashKey] = React.useState<string | null>(null);
+  const timer = React.useRef<number | undefined>(undefined);
+  const defer = React.useRef<number | undefined>(undefined);
+
+  React.useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      window.clearTimeout(defer.current);
+    },
+    []
+  );
+
+  const flash = React.useCallback(
+    (key: string) => {
+      window.clearTimeout(timer.current);
+      window.clearTimeout(defer.current);
+      setFlashKey(null);
+      // 稍等片刻：让「先切页再定位」时目标已经可见，也让同一 key 的重复定位能重新触发滚动。
+      // 用 setTimeout 而不是 requestAnimationFrame：窗口在后台时 rAF 会被暂停
+      defer.current = window.setTimeout(() => {
+        setFlashKey(key);
+        timer.current = window.setTimeout(() => setFlashKey(null), duration);
+      }, 50);
+    },
+    [duration]
+  );
+
+  const clear = React.useCallback(() => {
+    window.clearTimeout(timer.current);
+    setFlashKey(null);
+  }, []);
+
+  return { flashKey, flash, clear };
+}

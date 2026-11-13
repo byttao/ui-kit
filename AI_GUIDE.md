@@ -42,7 +42,7 @@ rsync -a --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/
 cp src/ui-kit/theme-init.js public/theme-init.js
 ```
 
-当前版本 **1.3.0**（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md` 的「从上一版升级」。
+当前版本 **1.4.0**（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md` 的「从上一版升级」。
 
 ## 第 3 步：依赖
 
@@ -110,12 +110,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
-import { ThemeProvider } from "./ui-kit";
+import { ErrorBoundary, ThemeProvider } from "./ui-kit";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>   {/* 默认森翠雅韵 · 浅色侧栏 · 毛玻璃；可传 accent / mode / sidebar / glass 覆盖 */}
-      <App />
+      <ErrorBoundary> {/* 渲染出错时显示原因 + 复制 + 重新加载，而不是整页空白；放在 ThemeProvider 里面 */}
+        <App />
+      </ErrorBoundary>
     </ThemeProvider>
   </StrictMode>
 );
@@ -123,122 +125,187 @@ createRoot(document.getElementById("root")!).render(
 
 `ThemeProvider` 已经包含 `StyleProvider layer`、`ConfigProvider`（主题 + 中文语言包）和 antd `App`。**不要再包一层 `ConfigProvider`**；需要局部主题时用嵌套 `ConfigProvider`，只写要改的 token。
 
-**主题存进应用自己的设置文件**（便携版换机器后 WebView 数据不跟着走）：读到设置后受控传入，切换时写回：
+### 主题存进应用自己的设置文件（受控主题）
+
+便携版换机器后 WebView 的 localStorage 不跟着走，主题要存进自己的 settings.json。读写设置都发生在 `ThemeProvider` **外面**，而那里拿不到 `App.useApp()` 的 `message`。推荐写法：外层 `Root` 只管数据，把错误放进 state，由 `ThemeProvider` 里面的一个小组件负责提示。
 
 ```tsx
-<ThemeProvider
-  accent={settings.themeAccent}            // 受控；设置还没读到时传 undefined，用 localStorage 里的值
-  mode={settings.themeMode}
-  onAccentChange={(accent) => saveSettings({ ...settings, themeAccent: accent })}
-  onModeChange={(mode) => saveSettings({ ...settings, themeMode: mode })}
->
+// src/main.tsx
+import { useCallback, useEffect, useRef, useState } from "react";
+import { App as AntApp } from "antd";
+import { invoke } from "@tauri-apps/api/core";
+import { ErrorBoundary, THEMES, ThemeProvider, type Accent, type ThemeMode } from "./ui-kit";
+
+function Root() {
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);   // 外层发生的错误，交给里面提示
+
+  useEffect(() => {
+    invoke<Settings>("get_settings").then(setSettings).catch((err) => setNotice(`读取设置失败：${err}`));
+  }, []);
+
+  const ref = useRef(settings);
+  ref.current = settings;
+  const saveTheme = useCallback((patch: Partial<Settings>) => {
+    const current = ref.current;
+    if (!current) return;
+    const next = { ...current, ...patch };
+    setSettings(next);                                          // 先切过去，再写文件
+    invoke<Settings>("save_settings", { settings: next }).then(setSettings).catch((err) => setNotice(`保存主题失败：${err}`));
+  }, []);
+
+  // 设置读到前传 undefined：用 localStorage 里上次的主题（首帧不闪）；读到后以设置文件为准
+  const accent = settings && Object.hasOwn(THEMES, settings.themeAccent) ? (settings.themeAccent as Accent) : undefined;
+  const mode = settings && ["light", "dark", "system"].includes(settings.themeMode) ? (settings.themeMode as ThemeMode) : undefined;
+
+  return (
+    <ThemeProvider accent={accent} mode={mode} onAccentChange={(a) => saveTheme({ themeAccent: a })} onModeChange={(m) => saveTheme({ themeMode: m })}>
+      <ErrorBoundary>
+        <RootNotice notice={notice} onShown={() => setNotice(null)} />
+        <App settings={settings} setSettings={setSettings} />
+      </ErrorBoundary>
+    </ThemeProvider>
+  );
+}
+
+/** 在 ThemeProvider 里面：拿得到带主题的 message */
+function RootNotice({ notice, onShown }: { notice: string | null; onShown: () => void }) {
+  const { message } = AntApp.useApp();
+  useEffect(() => {
+    if (!notice) return;
+    message.error(notice);
+    onShown();
+  }, [notice, message, onShown]);
+  return null;
+}
 ```
 
-## 第 6 步：页面模板（照这个结构写每个功能页）
+- 读设置失败时主题仍可用（localStorage 的值），页面里需要设置的地方显示 `EmptyState` 引导去设置页。
+- 不要为了拿 `message` 把 `ThemeProvider` 拆成两层，也不要用静态 `message.error()`。
+
+## 第 6 步：先选配方，再写页面
+
+kit 的 `recipes/` 里有四个完整可运行的页面配方（demo 的「页面配方」分组就是它们）。**每个功能页先对照下表选一个配方，拷过去再改**，不要从空白开始拼：
+
+| 配方 | 文件 | 什么时候用 | 例子 |
+|---|---|---|---|
+| 批处理页 | `recipes/batch-page.tsx` | 一批文件、一个总进度、一次跑完 | 图片转换、裁切、压缩、重命名 |
+| 任务队列页 | `recipes/queue-page.tsx` | 任务各自独立、可并发、排队 / 取消 / 重试，每个任务有自己的状态与进度 | AI 出图、下载、转码 |
+| 图库页 | `recipes/gallery-page.tsx` | 按「每张图」浏览产出，选中看详情、双击大图、对单张操作 | 出图结果、素材库 |
+| 设置页 | `recipes/settings-page.tsx` | 应用级配置，草稿 / 保存 / 放弃修改 | 每个应用一个 |
+
+一个应用通常是「一个或两个工作页（批处理 / 队列）+ 图库（可选）+ 设置」。不属于任何一种时（如表格逐行设置模式），以最接近的配方为骨架，demo 的「表格变体」（`demo/src/App.tsx` 的 `CropPage`）是批处理页换成 antd `Table` 的写法。
+
+```bash
+cp src/ui-kit/recipes/queue-page.tsx src/pages/QueuePage.tsx
+# 改 import："../index" → "../ui-kit"；把 props 里的 api / backend 换成 invoke 实现（见下面各配方）
+```
+
+`recipes/mock.ts` 是 demo 用的内存数据层（`createMockQueueApi`、`mockBatchBackend`、`createMockSettingsApi`），**不要拷进项目**；写页面测试时可以借用它的写法。
+
+所有配方共用的外壳（`src/App.tsx`）：
 
 ```tsx
-// src/App.tsx
 import { useState } from "react";
-import { SwapOutlined } from "@ant-design/icons";
-import { App as AntApp, Button, Empty, Radio } from "antd";
-import { open } from "@tauri-apps/plugin-dialog";
-import {
-  AppShell, DropZone, FileRow, ListWell, LogViewer, NavBadge, Page, Panel, ProgressPanel,
-  ThemeMenu, ThemeToggle, Workspace, fileName, useFileDrop, useLogger,
-} from "./ui-kit";
+import { OrderedListOutlined, PictureOutlined, SettingOutlined } from "@ant-design/icons";
+import { AppShell, ErrorBoundary, NavBadge, ThemeMenu, ThemeToggle, useTaskEvents } from "./ui-kit";
 
-type PageKey = "home" | "other";
+type PageKey = "queue" | "gallery" | "settings";
 
 export default function App() {
-  const [page, setPage] = useState<PageKey>("home");
+  const [page, setPage] = useState<PageKey>("queue");
+  const { tasks } = useTaskEvents<Task>();                       // 侧栏徽标、图库都从任务列表派生
+  const running = tasks.filter((t) => t.status === "running" || t.status === "queued").length;
   return (
     <AppShell
       brand={{ mark: "A", name: "应用名", subtitle: "一句话说明" }}
       nav={[
-        { key: "home", label: "功能一", icon: <SwapOutlined />, section: "分组名", badge: <NavBadge count={0} /> },
-        { key: "other", label: "功能二", icon: <SwapOutlined /> },
+        { key: "queue", label: "出图", icon: <OrderedListOutlined />, section: "创作", badge: <NavBadge count={running} /> },
+        { key: "gallery", label: "图库", icon: <PictureOutlined /> },
+        { key: "settings", label: "设置", icon: <SettingOutlined />, section: "应用" },
       ]}
       active={page}
       onNavigate={setPage}
       sidebarFooter={<><span>版本 V1.0.0</span><span className="flex items-center gap-1"><ThemeMenu /><ThemeToggle /></span></>}
     >
-      {/* 有状态的页面常驻，用 hidden 切换：日志、草稿、事件订阅不丢 */}
-      <div className={page === "home" ? "h-full" : "hidden"}>
-        <FeaturePage active={page === "home"} />
+      {/* 有状态的页面常驻，用 hidden 切换；每页一个 ErrorBoundary，一页出错不影响其他页 */}
+      <div className={page === "queue" ? "h-full" : "hidden"}>
+        <ErrorBoundary size="page"><QueuePage api={queueApi} /></ErrorBoundary>
       </div>
-      <div className={page === "other" ? "h-full" : "hidden"}>{/* … */}</div>
+      {/* … gallery / settings 同理 */}
     </AppShell>
-  );
-}
-
-const OPTIONS = [
-  { value: "a", label: "选项 A" },
-  { value: "b", label: "选项 B" },
-];
-
-function FeaturePage({ active }: { active: boolean }) {
-  const [files, setFiles] = useState<string[]>([]);
-  const [option, setOption] = useState("a");
-  const { logs, log, clear } = useLogger();
-  const { message } = AntApp.useApp();
-
-  const add = (paths: string[]) => {
-    const fresh = paths.filter((p) => !files.includes(p));
-    if (fresh.length) { setFiles((prev) => [...prev, ...fresh]); log(`已添加 ${fresh.length} 个文件。`); }
-  };
-  // 常驻页面只在可见时接收拖拽
-  const { hovering } = useFileDrop(add, { enabled: active });
-  const browse = async () => {
-    const picked = await open({ multiple: true, filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png"] }] });
-    if (picked) add(Array.isArray(picked) ? picked : [picked]);
-  };
-
-  return (
-    <Page>
-      <Workspace
-        aside={
-          <Panel title="设置">
-            <Radio.Group orientation="vertical" options={OPTIONS} value={option} onChange={(e) => setOption(e.target.value)} />
-          </Panel>
-        }
-        // 主按钮常驻右栏底部：参数再多也不会被挤出可视区
-        asideFooter={
-          <>
-            <ProgressPanel progress={null} />
-            <Button type="primary" block disabled={!files.length} onClick={() => message.success("已开始")}>
-              开始处理 · {files.length} 个
-            </Button>
-          </>
-        }
-      >
-        <Panel
-          fill
-          className="flex-1"
-          title="待处理文件"
-          extra={<Button type="link" size="small" disabled={!files.length} onClick={() => setFiles([])}>清空列表</Button>}
-        >
-          <DropZone active={hovering} compact={files.length > 0} onBrowse={browse} />
-          <ListWell>
-            {files.length === 0 ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="添加文件后显示在这里" className="py-9" />
-            ) : (
-              <ul className="m-0 list-none p-0">
-                {files.map((f, i) => <FileRow key={f} index={i + 1}>{fileName(f)}</FileRow>)}
-              </ul>
-            )}
-          </ListWell>
-        </Panel>
-      </Workspace>
-
-      <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0">
-        <LogViewer logs={logs} onClear={clear} />   {/* 自带「清空」「复制全部」 */}
-      </Panel>
-    </Page>
   );
 }
 ```
 
-参数很多的页面（模式 + 模型 + 提示词 + 参考图 + 若干参数）：`aside` 只放一张 `<Panel fill title="参数" className="min-h-0 flex-1"><SettingsScroll>…</SettingsScroll></Panel>`，只滚参数区，主按钮仍在 `asideFooter`。任务队列页与设置页的完整写法见 `demo/src/templates.tsx`（`QueuePage`、`SettingsPage`），设置页排版规范见 design.md「设置页」。
+### 配方 · 批处理页
+
+- **何时用**：一批文件、一个总进度、一次跑完。
+- **骨架**：`Page` > `Workspace`（左：`DropZone` + `ListWell` > `FileRow`；右：设置 `Panel`，`asideFooter` = `ProgressPanel` + 主按钮）+ 底部日志 `Panel` > `LogViewer onClear`。
+- **状态与空态**：`files`、`failed`（失败标记）、`running`、`progress`；列表空时 `<Empty image={Empty.PRESENTED_IMAGE_SIMPLE}>`；有文件后 `DropZone compact`；跑完后成功的移出、失败的留下标红，重新添加时清除失败标记；处理中禁用拖拽（`useFileDrop(add, { enabled: active && !running })`）。
+- **主按钮**：「开始转换 · N 张」，处理中显示「处理中…」并禁用。
+- **数据层**（`BatchBackend`）：
+
+```tsx
+import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+
+const tauriBatchBackend: BatchBackend = {
+  pick: async () => {
+    const picked = await open({ multiple: true, filters: [{ name: "Images", extensions: IMAGE_EXTENSIONS }] });
+    return picked ? (Array.isArray(picked) ? picked : [picked]) : [];
+  },
+  run: async (files, options, report) => {
+    const unlisten = await listen<BatchProgress>("batch-progress", (e) => report(e.payload));
+    try { return await invoke<{ failed: string[]; message: string }>("batch_convert", { files, options }); }
+    finally { unlisten(); }
+  },
+};
+```
+
+- **Rust 端**：见下文「Rust 端约定 · 批处理」，命令返回 `{ failed: Vec<String>, message: String }`。
+
+### 配方 · 任务队列页
+
+- **何时用**：任务各自独立、可并发、排队 / 取消 / 重试。
+- **骨架**：`Page` > `Workspace`（左：`ListWell` > `ListRow`；右：一张 `<Panel fill className="min-h-0 flex-1">` + `SettingsScroll` 放参数，`asideFooter` 主按钮）+ 底部日志。
+- **行**：`leading` = `Thumb`（运行中 `loading`）；`meta` = `StatusTag` + 参数 `Tag` + `LinkTag`（「改自 #n」，点击 `flash(parent.id)`）；`extra` = 运行中的 `Progress`、报错文字、多合一的 `ThumbStrip`（`caption` 常显 `#n-i`）；`trailing` 最多 3 个图标按钮 + 「更多」。失败行 `status="error"` + `failedLabel={false}`（行里已有失败 Tag）。
+- **定位**：`const { flashKey, flash } = useRowFlash()`，行上 `highlight={flashKey === t.id}`；外部跳转（如从图库「定位到任务」）传 `focus={{ id, nonce: Date.now() }}`，先切页再定位。
+- **状态与空态**：列表只由 `useTaskEvents` 维护（Rust 推事件），提交 / 重试 / 取消只调命令、不本地改列表；加载中 `EmptyState size="small" title="正在读取任务…"`，空队列 `EmptyState` 引导写提示词；缺配置（API Key）时 `EmptyState` + 「去设置」按钮。
+- **主按钮**：「开始生成 · N 张」（张数是参数时照写）；被参数拦下时禁用，原因用 `FieldHint type="warning"` 写在相关控件下。
+- **数据层**（`QueueApi`）：
+
+```tsx
+const queueApi: QueueApi = {
+  load: () => invoke<QueueTask[]>("list_tasks"),
+  // listen 不传：Tauri 里 useTaskEvents 自己用 @tauri-apps/api/event
+  submit: (input) => invoke<QueueTask>("submit_task", { input }),
+  retry: (id) => invoke("retry_task", { id }),
+  cancel: (id) => invoke("cancel_task", { id }),
+  remove: (ids) => invoke("remove_tasks", { ids }),
+};
+```
+
+- **Rust 端**：见下文「Rust 端约定 · 多任务队列」；`number` 由 Rust 自增、删除后不复用。
+- **测试 / 浏览器预览**：`useTaskEvents({ listen: backend.listen, load: backend.load })` 配 `createMockTaskBackend()`，非 Tauri 环境也会订阅与加载。
+
+### 配方 · 图库页
+
+- **何时用**：按「每张图」浏览已产出的结果。
+- **骨架**：`Page` > `Workspace`（左：`Segmented` 筛选（Panel `extra`）+ `ListWell className="p-3"` > `ImageGrid`；右：`<Panel fill title="图片信息" className="min-h-0 flex-1">` 内部滚动的详情，`asideFooter` 主按钮）+ 底部日志。
+- **瓦片角标**：编号用 `<ImageBadge>#12-3</ImageBadge>` + `badgePlacement="top-left"`。
+- **状态与空态**：`items` 由任务列表派生（每个成功任务的每个文件一项）；选中项可受控——外部改 `selectedKey` 即定位，`ImageGrid` 自动滚到可见，选中项被筛掉时切回「全部」；没有图时 `EmptyState`，没选中时详情区 `EmptyState size="small"`。
+- **主按钮**：「继续修改 · 这张」；详情区放次级按钮（大图预览、复制、打开文件夹、定位到任务、`danger` 的「删除记录…」）。
+- **数据层**：`items` + `onEdit` / `onReveal`（`revealItemInDir(path)`，opener 插件）/ `onRemove`（`invoke("remove_tasks")`）/ `onLocateTask`。
+
+### 配方 · 设置页
+
+- **何时用**：每个应用一个。排版规范见 design.md「设置页」。
+- **骨架**：`Page` > `Workspace`（左：`<Panel fill className="flex-1" title="设置" extra="外观即时生效…">` > `SettingsScroll` > `<Form layout="vertical" component="div" className="contents">` > 若干 `SettingsSection`；右：「关于」卡片，`asideFooter` = 有改动时的「放弃修改」+ 主按钮）+ 底部日志。
+- **状态**：`saved` / `draft` 两份，`dirty` 比较两者；外观（明暗、主题）直接调 `useTheme().setMode / setAccent`，不进草稿；缺必填项时顶部 `EmptyState size="small"`；输入格式错误用 `Form.Item validateStatus / help`，并禁用保存。
+- **主按钮**：「保存设置」（无改动或有错误时禁用）。
+- **数据层**（`SettingsApi`）：`load: () => invoke("get_settings")`、`save: (s) => invoke("save_settings", { settings: s })`、`test`（测试连接，不扣费）、`pickDir: () => open({ directory: true })`、`about`（版本、数据目录）。
 
 ## 规则（写页面时必须遵守）
 
@@ -259,13 +326,19 @@ function FeaturePage({ active }: { active: boolean }) {
 15. **行尾操作**：`type="text" size="small"` 图标按钮 + `Tooltip` + `aria-label`，最多 3 个，其余收进「更多」（`MoreOutlined` + `Dropdown`），删除放菜单最后。
 16. **右栏提示**：单项说明写 `Form.Item extra`；依赖其他参数的提示 / 警示用 `<FieldHint>` / `<FieldHint type="warning">`，不要在 300px 右栏里放 `Alert`。空状态需要引导操作时用 `EmptyState`。侧栏徽标用 `NavBadge`，不用 antd `Badge`（默认红色是危险语义）。
 17. **内联 `style`** 只给运行时算出的数据（宽高比、列数、调用方传入的尺寸、要原样展示的色块）；颜色、间距、字号一律用类名。
-18. **v6 弃用 API 不要写**：`Space direction`（用 `orientation`）、`Alert message`（用 `title`）、`Progress trailColor`（用 `railColor`）。以 `antd lint` 的结果为准。
+18. **可点击的标签**（既表达状态 / 关系，又能跳转定位，如「改自 #7」）用 `LinkTag`，不要给 `Tag` 自己补 `role="button"` 与键盘事件；会改数据的操作仍用 `Button`。
+19. **定位高亮**：跳到某条记录用 `useRowFlash` 的 `flash(id)`（主色内描边 2 秒，自动滚到可见）；图库定位用 `ImageGrid` 的受控 `selectedKey`（自动滚到可见）。目标在另一页时先切页再定位。
+20. **图片上的文字**（编号、张数、模型名角标）用 `ImageBadge`（实底卡片色 + 描边 + 正文色），不要用 `bg-spotlight`、半透明黑底或主色底。
+21. **错误兜底**：入口在 `ThemeProvider` 里面包一层 `ErrorBoundary`；每个常驻功能页再包 `<ErrorBoundary size="page">`。事件回调、Promise 里的异常进不了错误边界，用 try/catch + `message` / 日志。
+22. **比例 / 尺寸选择**用 `RatioSelect`（选项可带尺寸说明），下面配 `RatioPreview`；「整张等分拆切」不要传 `cellRatio`，每张比例写进 `caption`。
+23. **v6 弃用 API 不要写**：`Space direction`（用 `orientation`）、`Alert message`（用 `title`）、`Progress trailColor`（用 `railColor`）。以 `antd lint` 的结果为准。
 
 ## 组件速查（从 `./ui-kit` 导入）
 
 | 组件 / Hook | 关键参数 |
 |---|---|
-| `AppShell` | `brand={{ mark, name, subtitle? }}`（`mark`：字母 / 单色 SVG / `{ src, alt? }` 图片）`nav={NavItem[]}` `active` `onNavigate` `sidebarFooter?` `topbar?` `statusbar?` |
+| `AppShell` | `brand={{ mark, name, subtitle? }}`（`mark`：单色字形——字母或 `currentColor` SVG，画在反色块里随主题变色；彩色图标——`{ src, alt? }`，原样显示、不套色块）`nav={NavItem[]}` `active` `onNavigate` `sidebarFooter?` `topbar?` `statusbar?` |
+| `ErrorBoundary` | `title?` `onError?` `fallback?(error, reset)` `size="screen"\|"page"`；放在 ThemeProvider 里面 |
 | `NavItem` | `{ key, label, icon?, section?（分组标题，写在组内第一项）, badge? }` |
 | `NavBadge` | `count` `max=99` `tone="accent"\|"muted"` `showZero?`；传给 `NavItem.badge` |
 | `Page` | `fill`（默认 true 不滚动；内容型页面传 `fill={false}` 整页滚动） |
@@ -277,13 +350,17 @@ function FeaturePage({ active }: { active: boolean }) {
 | `ListWell` | 列表滚动容器（可传 ref，给 antd Table 的 sticky 用） |
 | `FileRow` | 32px 文件行：`index` `selected` `status="error"` `trailing` `onClick` |
 | `ListRow` | 富列表行：`index?` `leading?`（缩略图）`title?` `meta?` `extra?`（第二行起）`trailing?` `status?="error"` `failedLabel?` `selected?` `highlight?`（定位高亮并滚到可见）`align="start"\|"center"` |
+| `useRowFlash(duration=2000)` | → `{ flashKey, flash(key), clear }`；行上 `highlight={flashKey === id}` |
+| `LinkTag` | antd Tag 的全部参数 + `onClick` `disabled`；可点击标签（跳转 / 定位） |
 | `FILE_ROW_ERROR_CLASS` / `FailedMark` | antd Table 失败行的 `rowClassName` / 失败图标 + 文字 |
 | `Thumb` | `path?` `size="xs"\|"sm"\|"md"\|"lg"\|"fill"` `ratio?` `fit="cover"\|"contain"` `loading?` `preview=true` `open?` `onOpenChange?` `alt?` |
-| `ThumbStrip` | `items: (string \| { key?, path, alt? })[]` `size="sm"` `columns?` `onRemove?(key)` `preview=true` `showName?` |
-| `ImageGrid` | `items: { key, path, alt?, badge? }[]` `selectedKey?` `onSelect?` `minTileWidth=148` `ratio=1` `preview=true` `previewIndex?` `onPreviewIndexChange?` |
+| `ThumbStrip` | `items: (string \| { key?, path, alt?, caption?, badge? })[]` `size="sm"` `columns?` `onRemove?(key)` `preview=true` `showName?` |
+| `ImageGrid` | `items: { key, path, alt?, badge? }[]` `selectedKey?`（变化时自动滚到可见）`onSelect?` `minTileWidth=148` `ratio=1` `preview=true` `previewIndex?` `onPreviewIndexChange?` `badgePlacement="bottom-left"\|"top-left"` `scrollToSelected=true` |
+| `ImageBadge` | 图片上的角标（编号、张数） |
 | `localImageSrc(path)` | 本地路径 → `convertFileSrc`（浏览器里原样返回） |
 | `RatioIcon` | `ratio`（"16:9" / 1.5 / [16, 9] / "auto"）`size=16` |
-| `RatioPreview` | `ratio` `cols=1` `rows=1` `cellRatio?`（画格内裁切）`labels=true` `height=110` `caption?` `autoText?` |
+| `RatioSelect` | antd Select 的参数 + `options: (string \| { value, label?, size?, disabled? })[]` `value` `onChange` `autoLabel="自动"` |
+| `RatioPreview` | `ratio` `cols=1` `rows=1` `cellRatio?`（只用于「合成后每格居中裁切」）`labels=true` `height=110` `caption?` `autoText?` |
 | `parseRatio(value)` | → `[宽, 高] \| null` |
 | `SettingsSection` | `title` `description?` `extra?` `children` |
 | `SettingsScroll` | 长表单滚动容器，`maxWidth=640` |
@@ -301,7 +378,8 @@ function FeaturePage({ active }: { active: boolean }) {
 | `THEMES` / `FUNCTIONAL` / `surfaceColors(accent, resolved)` | 主题、功能色定义与某主题的表面色（只读） |
 | `useFileDrop` | `useFileDrop(onDrop, { extensions?, enabled? })` → `{ hovering }` |
 | `useBatchProgress` | `useBatchProgress("事件名", onFileStart?)` → `{ progress, start(total), finish(stage, completed?) }` |
-| `useTaskEvents<T>(options?)` | `{ load?, updatedEvent="task-updated", removedEvent="task-removed", getId?, sort? }` → `{ tasks, loaded, setTasks, reload }` |
+| `useTaskEvents<T>(options?)` | `{ load?, listen?, enabled?, updatedEvent="task-updated", removedEvent="task-removed", getId?, sort? }` → `{ tasks, loaded, setTasks, reload }` |
+| `createMockTaskBackend<T>(initial?)` | 内存模拟后端 → `{ listen, load, update(task), remove(ids), snapshot() }`；浏览器预览、测试用 |
 | `fileName(path)` / `cn(...)` | 取文件名 / 合并 className |
 
 ## Rust 端约定

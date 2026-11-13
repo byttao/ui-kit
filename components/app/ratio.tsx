@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Select, type SelectProps } from "antd";
 import { cn } from "../../lib/cn";
 
 /** 宽高比的几种写法："16:9" / "16x9" / 1.777 / [16, 9]；"auto" 或无法解析时为 null。 */
@@ -67,9 +68,12 @@ export interface RatioPreviewProps {
   /** 宫格列数 / 行数，默认 1 × 1（不画分隔线） */
   cols?: number;
   rows?: number;
-  /** 每格实际输出的比例；与格子比例不一致时，在格内画出居中裁切的范围 */
+  /**
+   * 「合成后每格居中裁切」的用法才传：每格实际输出的比例，与格子比例不一致时在格内画出裁切范围。
+   * 「整张按 cols × rows 等分拆切」（每格比例就是格子本身）不要传，每张的比例 / 尺寸写进 caption 或 labels。
+   */
   cellRatio?: RatioValue;
-  /** 格内编号，默认 1…N；传 false 不显示 */
+  /** 格内文字（仅 SVG 文本），默认编号 1…N；传 false 不显示；函数可返回「1 · 1:1」这类说明 */
   labels?: boolean | ((index: number) => React.ReactNode);
   /** 预览框高度，默认 110px；宽度撑满父容器，图形按比例居中 */
   height?: number;
@@ -185,4 +189,61 @@ export function RatioPreview({
       {caption && <div className="flex flex-col text-sm text-text-tertiary">{caption}</div>}
     </div>
   );
+}
+
+export interface RatioOption {
+  /** 比例值："1:1"、"16:9"、"auto" */
+  value: string;
+  /** 显示名，默认 value（auto 显示「自动」） */
+  label?: React.ReactNode;
+  /** 尺寸说明，如「1024 × 1024」，排在比例后面（说明文字色）；auto 不显示 */
+  size?: React.ReactNode;
+  disabled?: boolean;
+}
+
+export interface RatioSelectProps
+  extends Omit<SelectProps<string>, "options" | "value" | "onChange" | "mode" | "labelRender" | "optionRender"> {
+  /** 比例选项：字符串，或带尺寸说明的 { value, label?, size? } */
+  options: (string | RatioOption)[];
+  value?: string;
+  onChange?: (value: string) => void;
+  /** auto 的显示名，默认「自动」 */
+  autoLabel?: React.ReactNode;
+}
+
+/** 比例选项的显示：小图示 + 比例 + 尺寸说明。也可单独用在 Segmented、Radio 里。 */
+export function ratioOptionLabel(option: string | RatioOption, autoLabel: React.ReactNode = "自动") {
+  const o = typeof option === "string" ? { value: option } : option;
+  const auto = !parseRatio(o.value);
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <RatioIcon ratio={o.value} />
+      <span className="truncate">{o.label ?? (auto ? autoLabel : o.value)}</span>
+      {o.size && !auto && <span className="shrink-0 text-text-tertiary">{o.size}</span>}
+    </span>
+  );
+}
+
+/**
+ * 比例 / 尺寸选择器：antd Select，每个选项带按真实比例画的小图示与可选的尺寸说明。
+ * 配 RatioPreview 放在右栏参数区：上面选、下面看预览。
+ *
+ * @example
+ * <RatioSelect
+ *   value={ratio}
+ *   onChange={setRatio}
+ *   options={[{ value: "auto" }, { value: "1:1", size: "1024 × 1024" }, { value: "16:9", size: "1536 × 864" }]}
+ * />
+ * <RatioPreview ratio={ratio} caption={`单张 · ${ratio}`} />
+ */
+export function RatioSelect({ options, value, onChange, autoLabel = "自动", className, ...props }: RatioSelectProps) {
+  const items = React.useMemo(
+    () =>
+      options.map((option) => {
+        const o = typeof option === "string" ? { value: option } : option;
+        return { value: o.value, disabled: o.disabled, label: ratioOptionLabel(o, autoLabel) };
+      }),
+    [options, autoLabel]
+  );
+  return <Select<string> value={value} onChange={onChange} options={items} className={cn("w-full", className)} {...props} />;
 }

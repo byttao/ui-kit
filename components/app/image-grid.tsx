@@ -11,7 +11,7 @@ export interface ImageGridItem {
   path: string;
   /** 替代文字；也作为悬停提示的第一行 */
   alt?: string;
-  /** 瓦片左下角的小角标（如「2 / 4」「GPT」），用 antd Tag 或短文字 */
+  /** 瓦片上的角标（如「#12」「2 / 4」），用 `<ImageBadge>`；位置见 badgePlacement */
   badge?: React.ReactNode;
 }
 
@@ -30,6 +30,10 @@ export interface ImageGridProps {
   /** 受控预览：外部按钮打开时传入；不传则由组件自己管理 */
   previewIndex?: number | null;
   onPreviewIndexChange?: (index: number | null) => void;
+  /** 角标位置，默认 bottom-left（1.3.0 行为）；编号类角标建议 top-left */
+  badgePlacement?: "top-left" | "bottom-left";
+  /** selectedKey 变化时把选中瓦片滚到可见范围（外部定位跳转用），默认开启 */
+  scrollToSelected?: boolean;
   className?: string;
 }
 
@@ -54,8 +58,19 @@ export function ImageGrid({
   preview = true,
   previewIndex,
   onPreviewIndexChange,
+  badgePlacement = "bottom-left",
+  scrollToSelected = true,
   className,
 }: ImageGridProps) {
+  const listRef = React.useRef<HTMLUListElement>(null);
+  // 选中项变化（含外部跳转）时滚到可见；用 data-key 查找，不依赖每个瓦片的 ref
+  React.useEffect(() => {
+    if (!scrollToSelected || selectedKey == null) return;
+    const tile = [...(listRef.current?.querySelectorAll<HTMLElement>("[data-key]") ?? [])].find(
+      (el) => el.dataset.key === selectedKey
+    );
+    tile?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedKey, scrollToSelected]);
   const [innerIndex, setInnerIndex] = React.useState<number | null>(null);
   const controlled = previewIndex !== undefined;
   const current = controlled ? previewIndex : innerIndex;
@@ -70,6 +85,7 @@ export function ImageGrid({
   return (
     <>
       <ul
+        ref={listRef}
         className={cn("m-0 grid list-none gap-3 p-0", className)}
         // 列宽与比例是调用方给的数据，只能用内联 style
         style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${minTileWidth}px, 1fr))` }}
@@ -77,7 +93,7 @@ export function ImageGrid({
         {items.map((item, index) => {
           const selected = selectedKey === item.key;
           return (
-            <li key={item.key} className="relative">
+            <li key={item.key} data-key={item.key} className="relative">
               <button
                 type="button"
                 aria-pressed={onSelect ? selected : undefined}
@@ -106,7 +122,16 @@ export function ImageGrid({
                   />
                 )}
               </button>
-              {item.badge && <span className="pointer-events-none absolute bottom-1.5 left-1.5">{item.badge}</span>}
+              {item.badge && (
+                <span
+                  className={cn(
+                    "pointer-events-none absolute left-1.5",
+                    badgePlacement === "top-left" ? "top-1.5" : "bottom-1.5"
+                  )}
+                >
+                  {item.badge}
+                </span>
+              )}
             </li>
           );
         })}

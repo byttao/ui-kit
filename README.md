@@ -1,6 +1,6 @@
 # ui-kit · Tauri 2 + React + Ant Design 6 桌面界面套件
 
-**版本 1.3.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
+**版本 1.4.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
 
 以 **Ant Design v6** 为主：控件、动效、主题系统、色彩体系都用 antd；ui-kit 只补 antd 没覆盖的部分——12px 高密度正文、AA 对比度、随主题变化的侧栏与深色表面、桌面工具的页面骨架、列表 / 缩略图 / 设置页等应用级组件和 Tauri 集成。
 
@@ -15,7 +15,7 @@
 ```bash
 cd ui-kit/demo && npm install && npm run dev   # http://localhost:5180
 npm run check:contrast                          # 主题审计：42 种组合的对比度与区分度
-# demo 页面：图片转换 / 图片裁切（批处理模板）、任务队列 / 设置（1.3.0 模板）、组件一览、对比度
+# demo 页面：页面配方（批处理 / 任务队列 / 图库 / 设置）、表格变体、组件一览、对比度
 ```
 
 ---
@@ -41,10 +41,12 @@ ui-kit/
 │   ├── nav-badge.tsx         NavBadge（侧栏徽标）
 │   ├── drop-zone.tsx         DropZone
 │   ├── file-list.tsx         ListWell / FileRow（含失败状态）/ FailedMark / FILE_ROW_ERROR_CLASS / fileName
-│   ├── list-row.tsx          ListRow（富列表行：缩略图、多行信息、行尾操作、失败 / 选中 / 定位高亮）
-│   ├── thumb.tsx             Thumb / ThumbStrip / localImageSrc（本地图缩略图、缩略图条、参考图墙）
-│   ├── image-grid.tsx        ImageGrid（可选中图片瓦片、双击大图）
-│   ├── ratio.tsx             RatioIcon / RatioPreview / parseRatio（比例图示、宫格预览）
+│   ├── list-row.tsx          ListRow（富列表行：缩略图、多行信息、行尾操作、失败 / 选中 / 定位高亮）+ useRowFlash
+│   ├── link-tag.tsx          LinkTag（可点击的标签：跳转 / 定位）
+│   ├── thumb.tsx             Thumb / ThumbStrip（图下说明、角标）/ ImageBadge / localImageSrc
+│   ├── image-grid.tsx        ImageGrid（可选中图片瓦片、双击大图、选中自动滚到可见）
+│   ├── ratio.tsx             RatioIcon / RatioSelect / RatioPreview / parseRatio（比例图示、选择器、宫格预览）
+│   ├── error-boundary.tsx    ErrorBoundary（渲染出错兜底：整窗 / 单页）
 │   ├── settings-section.tsx  SettingsSection / SettingsScroll（设置页分区、长表单滚动）
 │   ├── empty-state.tsx       EmptyState（图标 + 文案 + 操作）
 │   ├── status-tag.tsx        StatusTag（带图标的状态标签预设）
@@ -57,11 +59,13 @@ ui-kit/
 ├── tauri/
 │   ├── useFileDrop.ts        窗口级拖拽（拿得到真实路径）
 │   ├── useBatchProgress.ts   订阅 Rust 批处理进度事件
-│   ├── useTaskEvents.ts      订阅 Rust 多任务队列事件（task-updated / task-removed）
+│   ├── useTaskEvents.ts      订阅 Rust 多任务队列事件（task-updated / task-removed）+ createMockTaskBackend
 │   └── tauri.conf.snippet.json  窗口 / CSP / assetProtocol 片段（含 Cargo 与插件权限说明）
+├── recipes/                  页面配方：batch-page / queue-page / gallery-page / settings-page（完整可运行，拷到项目里改）
+│   └── mock.ts               demo / 测试用的内存数据层（不要拷进项目）
 ├── scripts/icon/             应用图标：SVG → 透明 PNG → tauri icon → 逐尺寸校验透明（macOS）
 ├── index.ts                  统一出口
-└── demo/                     演示与验证工程（批处理模板、任务队列 / 设置页模板、组件一览、对比度）
+└── demo/                     演示与验证工程（四个页面配方、表格变体、组件一览、对比度）
 ```
 
 ---
@@ -204,7 +208,7 @@ ThemeProvider 把 antd 解析后的全部 token 写到 `:root`：`--ant-color-pr
 
 ## 五、页面骨架
 
-功能页是同一种结构：**左边列表、右边设置（主按钮常驻底部）、底部日志**。
+功能页是同一种结构：**左边列表、右边设置（主按钮常驻底部）、底部日志**。**先选配方**：`recipes/` 里有批处理页、任务队列页、图库页、设置页四个完整可运行的页面，拷到 `src/pages/` 再改（各配方的适用场景、骨架、数据层写法见 AI_GUIDE 第 6 步）。下面是批处理页的骨架。
 
 ```tsx
 import { Button, Radio, Space, Typography } from "antd";
@@ -252,7 +256,7 @@ import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, Progress
 </AppShell>
 ```
 
-多任务队列页（`ListRow` + `StatusTag` + `Thumb` + `useTaskEvents`）与设置页（`SettingsSection` + `SettingsScroll` + 草稿 / 保存）的完整写法见 `demo/src/templates.tsx`。
+任务队列页、图库页、设置页的完整写法见 `recipes/`。
 
 布局规则：
 
@@ -285,8 +289,12 @@ import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, Progress
 | 轻提示 / 确认框 | `const { message, modal } = App.useApp()`，不要用静态 `message.success()` |
 | 空状态 | 一句话：`<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="…" />`；要引导操作：`<EmptyState icon title description action />` |
 | 列表行 | 纯文件名：`FileRow`；缩略图 + 多行信息 + 操作：`ListRow`；要列 / 排序：antd `Table` |
+| 定位到某条 | 列表：`useRowFlash` 的 `flash(id)`（闪 2 秒并滚到可见）；图库：改 `ImageGrid` 的 `selectedKey` |
+| 可点击的标签 | `<LinkTag onClick>改自 #7</LinkTag>`（跳转 / 定位用） |
+| 图片上的角标 | `<ImageBadge>#12-3</ImageBadge>`（实底卡片色 + 描边） |
+| 错误兜底 | 入口 `<ErrorBoundary>`；每个功能页 `<ErrorBoundary size="page">` |
 | 本地图片 | `Thumb`（缩略图）、`ThumbStrip`（缩略图条 / 参考图墙）、`ImageGrid`（图库） |
-| 比例 / 尺寸选择 | `Select` 选项里放 `<RatioIcon ratio="16:9" />`；参数区放 `<RatioPreview ratio cols rows />` |
+| 比例 / 尺寸选择 | `<RatioSelect options={[{ value: "1:1", size: "1024 × 1024" }]} />` + `<RatioPreview ratio cols rows caption />` |
 | 设置页 | `SettingsScroll` > `Form layout="vertical"` > `SettingsSection`；排版见 design.md「设置页」 |
 
 v6 已弃用：`Space direction` → `orientation`、`Alert message` → `title`、`Progress trailColor` → `railColor`。写 antd 代码前先 `antd info <组件> --format json` 查 API，写完 `antd lint <文件>`。
@@ -381,7 +389,7 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 
 两种检查：
 
-- `npm run check:contrast`（demo 目录）：用 `lib/audit.ts` 的清单逐组计算，7 主题 × 深浅 × 侧栏样式 × 毛玻璃开关 = 42 种组合；每种 63 组对比度（含 1.3.0 新组件：中性标签、失败行标签、缩略图占位、瓦片选中描边、比例预览、参数提示 / 警示、导航徽标），毛玻璃组合共 143 组（再加每个背景色块上的卡片文字、参数警示、列表、表头与日志）+ 3 组区分度（主色与危险 / 警告 / 成功的 ΔE）。对比度不达标退出码为 1；区分度不足只警告。
+- `npm run check:contrast`（demo 目录）：用 `lib/audit.ts` 的清单逐组计算，7 主题 × 深浅 × 侧栏样式 × 毛玻璃开关 = 42 种组合；每种 67 组对比度（含 1.3.0 / 1.4.0 新组件：中性标签、失败行标签、缩略图占位与说明、瓦片选中描边、图片角标、可点击标签、比例预览、参数提示 / 警示、导航徽标），毛玻璃组合共 147 组（再加每个背景色块上的卡片文字、参数警示、列表、表头与日志）+ 3 组区分度（主色与危险 / 警告 / 成功的 ΔE）。对比度不达标退出码为 1；区分度不足只警告。
 - demo「对比度」页：同一份清单的可视化，含样张。
 
 **改任何颜色后都要跑一遍，必须全绿。** 清单覆盖不到的组合（自写元素的新配色），在 demo 里打开对应页面目测，或补进 `lib/audit.ts`。
@@ -390,7 +398,7 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 
 ## 九、迁移
 
-**从 1.2.0 升级到 1.3.0**：见 CHANGELOG.md「1.3.0 · 从 1.2.0 升级」。
+**升级**：见 CHANGELOG.md 各版本的「从上一版升级」（1.3.0 → 1.4.0、1.2.0 → 1.3.0）。
 
 **从 ui-kit v1（shadcn 结构）**：
 

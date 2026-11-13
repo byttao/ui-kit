@@ -26,7 +26,17 @@ export interface UseTaskEventsOptions<T> {
   getId?: (task: T) => string;
   /** 列表排序（如按创建时间倒序）；不传则保持「加载顺序 + 新任务追加在末尾」 */
   sort?: (a: T, b: T) => number;
+  /**
+   * 订阅函数，默认 `@tauri-apps/api/event` 的 listen。传入 `createMockTaskBackend().listen` 等
+   * 自定义实现后，非 Tauri 环境（浏览器 demo、组件测试）也会订阅与加载。
+   */
+  listen?: TaskListen;
+  /** 是否订阅与加载；默认：在 Tauri 里，或传了自定义 listen 时开启 */
+  enabled?: boolean;
 }
+
+/** 与 Tauri listen 同形的订阅函数：返回取消订阅的函数。 */
+export type TaskListen = <P>(event: string, handler: (event: { payload: P }) => void) => Promise<() => void>;
 
 /**
  * 订阅 Rust 推送的任务变更事件，维护一份任务列表。
@@ -44,7 +54,10 @@ export function useTaskEvents<T>(options: UseTaskEventsOptions<T> = {}) {
     removedEvent = "task-removed",
     getId = (task: T) => (task as { id: string }).id,
     sort,
+    listen: customListen,
+    enabled = isTauri() || !!customListen,
   } = options;
+  const subscribe: TaskListen = customListen ?? (listen as TaskListen);
   const [tasks, setTasks] = useState<T[]>([]);
   const [loaded, setLoaded] = useState(false);
   // 回调放进 ref：调用方传内联函数时不必 useCallback，也不会反复重订阅
@@ -73,7 +86,7 @@ export function useTaskEvents<T>(options: UseTaskEventsOptions<T> = {}) {
   }, [fetchAll]);
 
   useEffect(() => {
-    if (!isTauri()) {
+    if (!enabled) {
       setLoaded(true);
       return;
     }
@@ -90,11 +103,11 @@ export function useTaskEvents<T>(options: UseTaskEventsOptions<T> = {}) {
     };
 
     const subscribed = Promise.all([
-      listen<T>(updatedEvent, ({ payload }) => {
+      subscribe<T>(updatedEvent, ({ payload }) => {
         if (!ready) pending.push({ type: "updated", task: payload });
         else setTasks((prev) => upsert(prev, payload));
       }).then(keep),
-      listen<string[]>(removedEvent, ({ payload }) => {
+      subscribe<string[]>(removedEvent, ({ payload }) => {
         if (!ready) pending.push({ type: "removed", ids: payload });
         else setTasks((prev) => applyRemoved(prev, payload));
       }).then(keep),
@@ -125,7 +138,60 @@ export function useTaskEvents<T>(options: UseTaskEventsOptions<T> = {}) {
       disposed = true;
       unlisteners.forEach((fn) => fn());
     };
-  }, [updatedEvent, removedEvent, fetchAll, upsert]);
+    // subscribe 只在首次渲染时取用，不随渲染变化重订阅
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, updatedEvent, removedEvent, fetchAll, upsert]);
 
   return { tasks, loaded, setTasks, reload };
+}
+
+export interface MockTaskBackend<T> {
+  /** 传给 useTaskEvents 的 listen */
+  listen: TaskListen;
+  /** 传给 useTaskEvents 的 load：返回当前全部任务 */
+  load: () => Promise<T[]>;
+  /** 新增或更新一条任务，并推 task-updated（模拟 Rust 端 emit） */
+  update: (task: T) => void;
+  /** 删除任务，并推 task-removed */
+  remove: (ids: string[]) => void;
+  /** 当前全部任务（只读快照） */
+  snapshot: () => T[];
+}
+
+/**
+ * 内存里的模拟任务后端：浏览器 demo、组件测试里代替 Rust 端，行为与 Tauri 事件一致（先 emit 再被订阅者收到）。
+ *
+ * @example
+ * const backend = createMockTaskBackend<Task>(initialTasks);
+ * const { tasks } = useTaskEvents<Task>({ listen: backend.listen, load: backend.load });
+ * backend.update({ ...task, status: "running", progress: 40 });
+ */
+export function createMockTaskBackend<T>(
+  initial: T[] = [],
+  options: { getId?: (task: T) => string; updatedEvent?: string; removedEvent?: string; delay?: number } = {}
+): MockTaskBackend<T> {
+  const { getId = (task: T) => (task as { id: string }).id, updatedEvent = "task-updated", removedEvent = "task-removed", delay = 0 } = options;
+  let tasks = [...initial];
+  const handlers = new Map<string, Set<(event: { payload: unknown }) => void>>();
+  const emit = (event: string, payload: unknown) => handlers.get(event)?.forEach((h) => h({ payload }));
+  return {
+    listen: (async (event: string, handler: (event: { payload: unknown }) => void) => {
+      if (!handlers.has(event)) handlers.set(event, new Set());
+      handlers.get(event)!.add(handler);
+      return () => handlers.get(event)?.delete(handler);
+    }) as TaskListen,
+    load: () => new Promise((resolve) => setTimeout(() => resolve([...tasks]), delay)),
+    update: (task) => {
+      const id = getId(task);
+      const index = tasks.findIndex((t) => getId(t) === id);
+      tasks = index < 0 ? [...tasks, task] : tasks.map((t, i) => (i === index ? task : t));
+      emit(updatedEvent, task);
+    },
+    remove: (ids) => {
+      const set = new Set(ids);
+      tasks = tasks.filter((t) => !set.has(getId(t)));
+      emit(removedEvent, ids);
+    },
+    snapshot: () => [...tasks],
+  };
 }

@@ -99,6 +99,12 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
   // FieldHint：说明 / 警示文字在卡片上
   add("组件", "参数提示", t.colorTextTertiary, container);
   add("组件", "参数警示", t.colorWarningText, container);
+  // 1.4.0：ImageBadge 是实底卡片色 + 正文色（不随图片变化）；LinkTag 悬停是主色文字 + 主色描边；
+  // ThumbStrip caption 是说明文字；描边用于把角标从图片上分出来（非文字 3:1 不强制，图片颜色不可控）
+  add("组件", "图片角标", t.colorText, container);
+  add("组件", "可点击标签 · 悬停", t.colorPrimaryText, container);
+  add("组件", "可点击标签 · 不可用", t.colorTextTertiary, container);
+  add("组件", "缩略图说明", t.colorTextTertiary, container);
 
   add("主色", "链接 · 卡片", t.colorLink, container);
   add("主色", "链接 · 悬停", t.colorLinkHover, container);

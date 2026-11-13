@@ -284,7 +284,7 @@ antd 的四条价值观（自然、确定、有意义、生长）原样适用，
 - **Tag 的状态文字。** Tag 直接用 `colorSuccess` 等实心色写字，只在 `components.Tag` 里换成彩色文字档。
 - **日志等级色是分类色。** 按规范取预设色板（INFO 蓝、SUCCESS 绿、WARN 橙、ERROR 红、PROCESS 紫），档位同彩色文字规则，写成 `--kit-log-*`。
 
-**对比度是硬性要求。** 改任何颜色后，在 demo 目录运行 `npm run check:contrast`，或打开 demo 的「对比度」页。清单覆盖正文、次要、说明、占位符、表头、选中行、失败行、链接、主按钮三态、危险按钮、四种状态文字与标签、中性标签、Tooltip、侧栏与导航徽标、日志、1.3.0 新组件（缩略图占位图标、图片瓦片选中描边、比例预览、参数提示 / 警示），以及主色与功能色的区分度。共 7 套主题 × 深浅 × 侧栏样式 × 毛玻璃开关 42 种组合；毛玻璃组合额外逐个背景色块检查卡片文字（含参数警示）、内嵌玻璃上的列表文字、吸顶表头与日志。对比度不达标即失败，区分度不足只警告。
+**对比度是硬性要求。** 改任何颜色后，在 demo 目录运行 `npm run check:contrast`，或打开 demo 的「对比度」页。清单覆盖正文、次要、说明、占位符、表头、选中行、失败行、链接、主按钮三态、危险按钮、四种状态文字与标签、中性标签、Tooltip、侧栏与导航徽标、日志、1.3.0 / 1.4.0 新组件（缩略图占位图标与说明、图片瓦片选中描边、图片角标、可点击标签、比例预览、参数提示 / 警示），以及主色与功能色的区分度。共 7 套主题 × 深浅 × 侧栏样式 × 毛玻璃开关 42 种组合；毛玻璃组合额外逐个背景色块检查卡片文字（含参数警示）、内嵌玻璃上的列表文字、吸顶表头与日志。对比度不达标即失败，区分度不足只警告。
 
 ## Typography
 
@@ -320,6 +320,10 @@ antd 的四条价值观（自然、确定、有意义、生长）原样适用，
 - 拖拽区在列表有内容后缩成一行，把高度让给列表。
 - **右栏主按钮常驻。** 主按钮（和进度）放 `Workspace` 的 `asideFooter`，不要放在 `aside` 里用 `mt-auto` 顶到底部：参数一多，主按钮会被挤出可视区。参数只有一两张卡片时 `aside` 直接放 `Panel`（右栏整体滚动）；参数多时用一张 `<Panel fill className="min-h-0 flex-1">`，里面放 `SettingsScroll`，只滚参数区。
 - **页面切换：有状态的功能页常驻，用 `hidden` 切换。** `AppShell` 只渲染 children，按 `page === x &&` 切换会卸载页面，日志（`useLogger`）、未提交的草稿、事件订阅都会丢。功能页、设置页包一层 `<div className={page === "x" ? "h-full" : "hidden"}>` 常驻；内容型、无状态的页面（帮助、关于、组件一览）可以按需挂载。常驻页面里的拖拽要用 `useFileDrop(add, { enabled: active })` 只在可见时接收。
+
+### 页面配方
+
+功能页不从空白开始写：kit 的 `recipes/` 有四个完整可运行的配方（批处理页、任务队列页、图库页、设置页），各自的适用场景、骨架、状态与空态、主按钮、Rust 端约定见 AI_GUIDE「第 6 步：先选配方」。它们都遵守本文件的全部规则，是规则的参考实现。
 
 ### 设置页
 
@@ -363,10 +367,13 @@ antd 的四条价值观（自然、确定、有意义、生长）原样适用，
 | `Panel` | 撑满高度的卡片，内容区可滚动 | `Card` |
 | `DropZone` | 拖拽区视觉 + 点击选择 | — |
 | `ListWell` / `FileRow` | 列表滚动容器 / 32px 单行文件行 | — |
-| `ListRow` | 富列表行：序号、缩略图、标题、元信息、附加行、行尾操作、失败 / 选中 / 定位高亮 | — |
+| `ListRow` + `useRowFlash` | 富列表行：序号、缩略图、标题、元信息、附加行、行尾操作、失败 / 选中 / 定位高亮；「定位并闪一下」 | — |
+| `LinkTag` | 可点击的标签（跳转 / 定位） | `Tag` |
+| `ImageBadge` | 叠在图片上的角标 | — |
+| `ErrorBoundary` | 渲染出错兜底（整窗 / 单页） | `Result`、`Button` |
 | `Thumb` / `ThumbStrip` | 本地图缩略图（加载 / 失败占位、比例裁切、受控预览）/ 缩略图条与参考图墙 | `Image`、`Image.PreviewGroup` |
 | `ImageGrid` | 可选中图片瓦片，双击大图、翻页同步选中 | `Image.PreviewGroup` |
-| `RatioIcon` / `RatioPreview` | 比例小图示 / 比例与宫格预览框 | — |
+| `RatioIcon` / `RatioSelect` / `RatioPreview` | 比例小图示 / 比例尺寸选择器 / 比例与宫格预览框 | `Select` |
 | `SettingsSection` / `SettingsScroll` | 设置页分区 / 长表单滚动容器 | `Typography.Title` |
 | `EmptyState` | 图标 + 文案 + 操作按钮的空状态 / 缺配置引导 | `Empty` |
 | `StatusTag` | 带图标的状态标签：排队 / 进行中 / 成功 / 失败 / 警告 / 已取消 | `Tag` |
@@ -388,6 +395,10 @@ ui-kit 对 antd 组件的用法约定：
 - **行尾操作**（`ListRow` / `FileRow` 的 `trailing`、表格操作列）：一律 `<Button type="text" size="small" icon aria-label>` 外套 `Tooltip`，**最多 3 个常用操作**，按「查看 → 编辑 → 状态操作（重试 / 取消）」排；其余（复制、打开文件夹、删除）收进最后一个「更多」（`MoreOutlined` + antd `Dropdown`），删除放菜单最后、`danger`、文案带「…」并走确认弹窗。一个操作要先选对象（如多张图里选一张继续修改）时，图标按钮外套 `Dropdown`，菜单项写清对象。
 - **参数提示与警示**（右栏）：单项说明写在 `Form.Item extra`；依赖其他参数的提示用 `<FieldHint>`（11px 说明色 + 信息图标），会被拦下或有代价的写 `<FieldHint type="warning">`（警告文字色 + 感叹号），都放在相关控件下方。300px 右栏里不用 `Alert`（太重）；要用户改正的错误用 `Form.Item` 的 `validateStatus` / `help`；整页级问题才用 `<Alert showIcon>`，放在左侧列表上方。
 - **空状态**：一句话、无操作时用 `<Empty image={Empty.PRESENTED_IMAGE_SIMPLE}>`；需要引导（缺配置、去添加）时用 `EmptyState`（图标 + 主文案 + 说明 + 一个按钮）。图标用说明文字色，不要用 `quaternary`（只给禁用态）。
+- **可点击的标签**：既表达状态 / 关系、又能点击跳转的（「改自 #7」「来自 3 张参考图」），用 `LinkTag`：antd `Tag` + 按钮语义（`role="button"`、可聚焦、回车 / 空格触发），悬停主色描边与主色文字；目标已不存在时 `disabled`（说明文字色、不可点）。只用于跳转 / 定位；会改数据的操作仍用 `Button`。
+- **定位高亮**：跳到某条记录时，行用主色 2px 内描边（`ListRow highlight`，不改底色，选中 / 失败底色仍可辨），**持续 2 秒**（`ROW_FLASH_MS`）后自动取消，并滚到可见（`block: "nearest"`）。用 `useRowFlash`；目标在另一页时先切页、再定位（hook 内部等 50ms）。图库的定位是「选中」而不是闪烁：改 `ImageGrid` 的 `selectedKey`，自动滚到可见。不要用 `bg-primary-bg` 做高亮：深色下太暗。
+- **图片上的角标**（编号、张数、模型）：`ImageBadge`——实底 `bg-container` + `border-border` 描边 + 正文色 `text-text`，11px，4px 圆角，放在左上（编号）或左下（附加信息）。图片颜色不可控，所以角标自带实底，不用半透明；不要用 `bg-spotlight`（深色主题下是浅底，配白字不够）、半透明黑底或主色底（主题可能就是图片的主色）。
+- **错误兜底**：入口在 `ThemeProvider` 里面包 `ErrorBoundary`（整窗：错误信息 + 复制 + 重新加载）；常驻功能页各自再包 `<ErrorBoundary size="page">`（一页出错不影响侧栏和其他页，「重试」只重建这一页）。事件回调、Promise 里的异常进不了错误边界，用 try/catch + `message` / 日志。
 - **侧栏徽标**：`NavItem.badge` 传 `NavBadge`。不用 antd `Badge` 默认的红色（危险语义），也不用主色（侧栏可能就是主色）；「进行中 / 待处理」用反色块，「数量统计」用 `tone="muted"`（继承菜单文字色）。
 - **部分失败保留失败项**：批处理部分失败时，成功的移出列表，失败的留在列表里并用**次级危险样式**标出：浅红底 `colorErrorBg` + 红字 `colorErrorText`（与描边危险按钮同一档），行尾带失败图标与「失败」文字，悬停时底色与文字一起加深一档。`FileRow status="error"`；antd Table 用 `FILE_ROW_ERROR_CLASS` + `FailedMark`。重新添加或清空列表时清除失败标记。
 - **单选组**：竖排用 `Radio.Group` 加 `orientation="vertical"`；2–4 个互斥模式横排用 `Segmented`。
@@ -405,6 +416,8 @@ ui-kit 对 antd 组件的用法约定：
 - **可选中卡片**用原生 `<button type="button">`：antd 没有「可选中的图片 / 色块卡片」。用 `aria-pressed`（多选、切换）或 `role="radio"` + `aria-checked`（单选组），选中态 `border-primary`，悬停 `hover:border-primary-border-hover`，焦点由 `base.css` 的 `:focus-visible` 提供。kit 里的 `ImageGrid`、`ThemePicker`、`DropZone` 都是这种写法；自写同类卡片照抄。普通按钮、链接、开关仍然一律 antd。
 - **内联 `style`** 只用于**运行时算出的数据**：宽高比（`aspectRatio`）、网格列数 / 列宽（`gridTemplateColumns`）、调用方传入的尺寸（右栏宽、最大宽）、要原样展示的配色色块（主题选择器、审计样张）。颜色、间距、字号、圆角仍然只用 token 类，不写在 `style` 里。能用 SVG `viewBox` 按比例缩放的示意图优先用 `viewBox`。
 
+**比例预览的两种语义**：`RatioPreview` 的 `ratio` 是整张画布的比例，`cols × rows` 是等分格。「整张按格等分拆切」（每张比例就是格子本身）**不传 `cellRatio`**，每张的比例 / 尺寸写进 `caption`（或 `labels` 返回「1 · 9:16」）；只有「合成后每格再居中裁成另一比例」时才传 `cellRatio`，格内会画出裁切范围。选择器用 `RatioSelect`（选项带小图示与尺寸说明），放在预览上方。
+
 **SVG 与示意图的颜色**：preset 的颜色也会生成 `fill-*` / `stroke-*` 类，SVG 元素直接写 `className="fill-primary-bg stroke-primary"`、`fill-container`、`fill-primary-text`、`stroke-border`，或用 `stroke="currentColor"` 继承文字色（`text-text-secondary`）。示意图（比例、宫格、流程）统一：画布 `fill-primary-bg stroke-primary`、分隔线 `stroke-primary` 虚线、裁切 / 留白 `fill-container`、编号 `fill-primary-text`，线条在主色浅底上 ≥ 3:1（已在审计里）。不要在 SVG 里写十六进制。
 
 ### 应用图标
@@ -414,7 +427,10 @@ ui-kit 对 antd 组件的用法约定：
 - **macOS 留边**：1024 × 1024 画布，底板 824 × 824 居中（四周各留 100px 透明），圆角约 185px；底板外必须透明。Windows / Linux 共用同一张图（四周透明不影响）。
 - **生成**：SVG 源文件放 `src-tauri/app-icon.svg`，执行 `bash src/ui-kit/scripts/icon/make-icons.sh`：用 AppKit 渲染透明底 1024 PNG → `npx tauri icon` 生成各尺寸 → 逐尺寸检查四角 alpha = 0、中心 alpha = 255。
 - **不要用 `qlmanage -t` 渲染 SVG**：它会垫白底，四角不透明，Dock 里是一块白方块，而且不报错。
-- **侧栏品牌标记**：单色 SVG（`currentColor`）或一个字母，画在反色块里随主题变色（推荐）；也可以 `brand={{ mark: { src: iconUrl } }}` 直接用应用图标，此时用**不带留边**的版本（底板铺满画布），否则 40px 里只剩 32px。
+- **侧栏品牌标记，两种情况**：
+  - **单色字形**：一个字母，或 `fill="currentColor"` 的单色 SVG 组件。画在 40px 反色块里（侧栏文字色做底、侧栏底色画形，与 `NavBadge` 同一规则），随主题、深浅自动变色，侧栏统一。没有彩色图标、或图标在侧栏底色上看不清时用它。
+  - **彩色图标**：`brand={{ mark: { src: iconUrl, alt } }}`，原样显示、**不套反色块**（透明圆角处不会露出色块）。用**不带 macOS 留边**的版本（底板铺满画布，另导一张 `brand-mark.png`），否则 40px 里只剩约 32px；浅色底板在浅色侧栏上要自带描边或阴影。
+  - 不要把彩色图标的 `<img>` 当 ReactNode 传给 `mark`：那会被套进反色块，透明圆角处露出色块。
 
 侧栏随主题变化（规则见「Colors · 侧栏」）。选中项用侧栏底色向文字色混 16%，不用 antd 默认的整块主色填充：侧栏本身可能就是主色。
 
