@@ -123,27 +123,50 @@ export function logsToText(logs: LogEntry[]) {
   return logs.map((entry) => `${entry.time} ${LEVEL[entry.level].prefix} ${entry.message}`).join("\n");
 }
 
-interface LogViewerProps {
+/** 写剪贴板：默认 navigator.clipboard.writeText；Tauri 里也可传 clipboard-manager 插件的 writeText。 */
+export type CopyText = (text: string) => Promise<void>;
+const defaultCopy: CopyText = (text) => navigator.clipboard.writeText(text);
+
+export interface LogViewerProps {
   logs: LogEntry[];
   className?: string;
   emptyText?: string;
-  /** 传了就在右上角显示「清空」按钮（通常传 useLogger 的 clear） */
+  /** 传了就显示「清空」按钮（通常传 useLogger 的 clear） */
   onClear?: () => void;
-  /** 右上角显示「复制全部」按钮；传了 onClear 时默认开启 */
+  /** 显示「复制全部」按钮；传了 onClear 时默认开启 */
   copyable?: boolean;
+  /**
+   * 工具条放在哪：
+   *   side（默认）：日志区右侧一列竖排小按钮，**不盖住日志文字**（1.4.0 是浮在右上角，会挡住长行末尾）；
+   *   none：不渲染，按钮由页面放到 Panel 的 extra——`<Panel extra={<LogActions logs={logs} onClear={clear} />}>`（推荐）。
+   */
+  toolbar?: "side" | "none";
+  /** 自定义写剪贴板（如 @tauri-apps/plugin-clipboard-manager 的 writeText） */
+  copyText?: CopyText;
 }
 
 /**
  * 彩色日志：等宽 11px，自动滚到底部；用户上翻查看时不打断。等级色是 ui-kit 扩展色 --kit-log-*。
- * 传 onClear / copyable 时右上角浮一个小工具条（清空、复制全部），不必在 Panel extra 里自己写。
+ *
+ * 清空 / 复制全部两种放法：
+ *   - 推荐：按钮放 Panel 标题栏——`<Panel extra={<LogActions logs={logs} onClear={clear} />}>` + `<LogViewer logs={logs} />`；
+ *   - 省事：`<LogViewer logs={logs} onClear={clear} />`，按钮在日志区右侧一列，不遮挡文字。
  *
  * @example
  * const { logs, log, clear } = useLogger();
- * <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0">
- *   <LogViewer logs={logs} onClear={clear} />
+ * <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0" extra={<LogActions logs={logs} onClear={clear} />}>
+ *   <LogViewer logs={logs} />
  * </Panel>
  */
-export function LogViewer({ logs, className, emptyText = "暂无日志", onClear, copyable = !!onClear }: LogViewerProps) {
+export function LogViewer({
+  logs,
+  className,
+  emptyText = "暂无日志",
+  onClear,
+  copyable = !!onClear,
+  toolbar = "side",
+  copyText,
+}: LogViewerProps) {
   const ref = React.useRef<HTMLDivElement>(null);
   const stickToBottom = React.useRef(true);
 
@@ -152,7 +175,7 @@ export function LogViewer({ logs, className, emptyText = "暂无日志", onClear
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
   }, [logs]);
 
-  const toolbar = !!onClear || copyable;
+  const withToolbar = toolbar !== "none" && (!!onClear || copyable);
 
   const body = (
     <div
@@ -166,7 +189,7 @@ export function LogViewer({ logs, className, emptyText = "暂无日志", onClear
       }}
       className={cn(
         "min-h-0 w-full flex-1 overflow-auto rounded bg-fill-quaternary px-3 py-2 font-mono text-sm",
-        !toolbar && className
+        !withToolbar && className
       )}
     >
       {logs.length === 0 ? (
@@ -185,28 +208,45 @@ export function LogViewer({ logs, className, emptyText = "暂无日志", onClear
     </div>
   );
 
-  if (!toolbar) return body;
+  if (!withToolbar) return body;
+  // 工具条在日志区外侧单独一列：不叠在文字上，长行也不会被挡住
   return (
-    <div className={cn("relative flex min-h-0 w-full flex-1 flex-col", className)}>
+    <div className={cn("flex min-h-0 w-full flex-1 gap-1", className)}>
       {body}
-      <LogToolbar logs={logs} onClear={onClear} copyable={copyable} />
+      <div className="flex shrink-0 flex-col gap-0.5">
+        <LogActions logs={logs} onClear={onClear} copyable={copyable} copyText={copyText} />
+      </div>
     </div>
   );
 }
 
-function LogToolbar({ logs, onClear, copyable }: { logs: LogEntry[]; onClear?: () => void; copyable: boolean }) {
+export interface LogActionsProps {
+  logs: LogEntry[];
+  /** 传了才显示「清空」 */
+  onClear?: () => void;
+  /** 显示「复制全部」，默认 true */
+  copyable?: boolean;
+  /** 自定义写剪贴板（如 Tauri clipboard-manager 插件） */
+  copyText?: CopyText;
+  className?: string;
+}
+
+/**
+ * 日志的「复制全部」「清空」图标按钮，放在 Panel 标题栏（`extra`）里。
+ * 复制内容是「时间 [等级] 内容」逐行（logsToText）。
+ */
+export function LogActions({ logs, onClear, copyable = true, copyText = defaultCopy, className }: LogActionsProps) {
   const { message } = AntApp.useApp();
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(logsToText(logs));
+      await copyText(logsToText(logs));
       message.success(`已复制 ${logs.length} 条日志`);
     } catch (err) {
       message.error(`复制失败：${err instanceof Error ? err.message : String(err)}`);
     }
   };
   return (
-    // 实底小工具条：盖住滚到它下面的日志，按钮始终可点
-    <div className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded border bg-container p-0.5">
+    <span className={cn("contents", className)}>
       {copyable && (
         <Tooltip title="复制全部">
           <Button type="text" size="small" icon={<CopyOutlined />} aria-label="复制全部日志" disabled={!logs.length} onClick={copy} />
@@ -217,6 +257,6 @@ function LogToolbar({ logs, onClear, copyable }: { logs: LogEntry[]; onClear?: (
           <Button type="text" size="small" icon={<ClearOutlined />} aria-label="清空日志" disabled={!logs.length} onClick={onClear} />
         </Tooltip>
       )}
-    </div>
+    </span>
   );
 }

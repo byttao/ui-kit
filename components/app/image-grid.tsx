@@ -30,6 +30,11 @@ export interface ImageGridProps {
   /** 受控预览：外部按钮打开时传入；不传则由组件自己管理 */
   previewIndex?: number | null;
   onPreviewIndexChange?: (index: number | null) => void;
+  /**
+   * cover（默认）：居中裁切铺满瓦片；contain：完整显示，瓦片底色作留白。
+   * 长条图（如 1376 × 383 的切片）、比例差异很大的一组图用 contain，否则看不出形状。
+   */
+  fit?: "cover" | "contain";
   /** 角标位置，默认 bottom-left（1.3.0 行为）；编号类角标建议 top-left */
   badgePlacement?: "top-left" | "bottom-left";
   /** selectedKey 变化时把选中瓦片滚到可见范围（外部定位跳转用），默认开启 */
@@ -58,6 +63,7 @@ export function ImageGrid({
   preview = true,
   previewIndex,
   onPreviewIndexChange,
+  fit = "cover",
   badgePlacement = "bottom-left",
   scrollToSelected = true,
   className,
@@ -118,7 +124,7 @@ export function ImageGrid({
                     loading="lazy"
                     draggable={false}
                     onError={() => setBroken((prev) => new Set(prev).add(item.key))}
-                    className="size-full object-cover"
+                    className={cn("size-full", fit === "contain" ? "object-contain" : "object-cover")}
                   />
                 )}
               </button>

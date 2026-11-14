@@ -1,9 +1,13 @@
 // 「组件一览」里的 1.3.0 / 1.4.0 新组件示例。页面模板见 ui-kit/recipes/。
 import { useState } from "react";
 import { BranchesOutlined, BugOutlined, EyeOutlined, KeyOutlined, MoreOutlined, PictureOutlined, RedoOutlined } from "@ant-design/icons";
-import { Button, Progress, Space, Tag, Typography } from "antd";
+import { Button, Form, Progress, Segmented, Space, Tag, Typography } from "antd";
 import {
+  AdvancedSection,
   EmptyState,
+  LogActions,
+  LogViewer,
+  ScrollArea,
   ErrorBoundary,
   FieldHint,
   ImageBadge,
@@ -29,6 +33,12 @@ const RATIOS = [
   { value: "16:9", size: "1365 × 768" },
 ];
 
+const LONG_LOGS = [
+  { id: "l1", time: "09:07:53", level: "info" as const, message: "已加入队列 #12：「清晨的湖面，薄雾，远处的山，胶片质感，远景，低饱和，柔和光线，35mm」，比例 16:9，4 合 1，背景自动，输出 PNG" },
+  { id: "l2", time: "09:08:10", level: "success" as const, message: "已下载 #12：/Users/demo/Pictures/输出/2026-11-14/湖面-薄雾-远山-胶片质感-16x9-4合1-0001.png（拆成 4 张）" },
+  { id: "l3", time: "09:08:12", level: "error" as const, message: "#13 失败：接口返回 429 Too Many Requests，请求过于频繁，已按设置排队等待 30 秒后自动重试第 2 次" },
+];
+
 /** 渲染时抛错，演示 ErrorBoundary */
 function Boom(): never {
   throw new Error("演示：组件渲染时抛出的错误");
@@ -39,7 +49,9 @@ export function NewComponents() {
   const [ratio, setRatio] = useState("16:9");
   const [crash, setCrash] = useState(false);
   const { flashKey, flash } = useRowFlash();
-  const gallery = SAMPLE_IMAGES.map((path, i) => ({
+  const [fit, setFit] = useState<"cover" | "contain">("contain");
+  const [format, setFormat] = useState("png");
+  const gallery = [...SAMPLE_IMAGES, "/samples/strip.svg"].map((path, i) => ({
     key: path,
     path,
     alt: `样图 ${i + 1}`,
@@ -132,7 +144,20 @@ export function NewComponents() {
           />
         </Panel>
 
-        <Panel title="图片网格 ImageGrid" extra={<Typography.Text type="secondary">单击选中，双击看大图</Typography.Text>}>
+        <Panel
+          title="图片网格 ImageGrid"
+          extra={
+            <Segmented
+              size="small"
+              value={fit}
+              onChange={(v) => setFit(v as "cover" | "contain")}
+              options={[
+                { value: "cover", label: "裁切 cover" },
+                { value: "contain", label: "完整 contain" },
+              ]}
+            />
+          }
+        >
           <Space size="small" wrap>
             {[0, 5].map((i) => (
               <Button key={i} size="small" onClick={() => setSelected(SAMPLE_IMAGES[i])}>
@@ -141,7 +166,7 @@ export function NewComponents() {
             ))}
           </Space>
           <ListWell className="h-[260px] flex-none p-3">
-            <ImageGrid items={gallery} selectedKey={selected} onSelect={setSelected} minTileWidth={110} badgePlacement="top-left" />
+            <ImageGrid items={gallery} selectedKey={selected} onSelect={setSelected} minTileWidth={110} badgePlacement="top-left" fit={fit} />
           </ListWell>
         </Panel>
       </div>
@@ -189,6 +214,51 @@ export function NewComponents() {
               恢复演示
             </Button>
           )}
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        <Panel
+          fill
+          title="日志 · LogActions 放标题栏（推荐）"
+          className="h-[170px]"
+          extra={<LogActions logs={LONG_LOGS} onClear={() => {}} />}
+        >
+          <LogViewer logs={LONG_LOGS} />
+        </Panel>
+        <Panel fill title="日志 · onClear 侧边工具条（不遮挡长行）" className="h-[170px]">
+          <LogViewer logs={LONG_LOGS} onClear={() => {}} />
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        <Panel fill title="ScrollArea · 下面还有" className="h-[220px]">
+          <ScrollArea>
+            {Array.from({ length: 14 }, (_, i) => (
+              <p key={i} className="m-0 py-1">
+                第 {i + 1} 行参数
+              </p>
+            ))}
+          </ScrollArea>
+        </Panel>
+        <Panel title="AdvancedSection · 高级折叠">
+          <Form layout="vertical" component="div" className="flex flex-col gap-3 [&_.ant-form-item]:mb-0">
+            <Form.Item label="常用参数（对齐参照）">
+              <Segmented block options={["1 张", "2 合 1", "4 合 1"]} />
+            </Form.Item>
+            <AdvancedSection
+              changedCount={format !== "png" ? 1 : 0}
+              extra={
+                <Button type="link" size="small" disabled={format === "png"} onClick={() => setFormat("png")}>
+                  恢复默认
+                </Button>
+              }
+            >
+              <Form.Item label="输出格式">
+                <Segmented block value={format} onChange={(v) => setFormat(String(v))} options={["png", "jpeg", "webp"]} />
+              </Form.Item>
+            </AdvancedSection>
+          </Form>
         </Panel>
       </div>
 

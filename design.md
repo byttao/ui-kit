@@ -374,11 +374,12 @@ antd 的四条价值观（自然、确定、有意义、生长）原样适用，
 | `Thumb` / `ThumbStrip` | 本地图缩略图（加载 / 失败占位、比例裁切、受控预览）/ 缩略图条与参考图墙 | `Image`、`Image.PreviewGroup` |
 | `ImageGrid` | 可选中图片瓦片，双击大图、翻页同步选中 | `Image.PreviewGroup` |
 | `RatioIcon` / `RatioSelect` / `RatioPreview` | 比例小图示 / 比例尺寸选择器 / 比例与宫格预览框 | `Select` |
-| `SettingsSection` / `SettingsScroll` | 设置页分区 / 长表单滚动容器 | `Typography.Title` |
+| `SettingsSection` / `SettingsScroll` / `AdvancedSection` | 设置页分区 / 长表单滚动容器（「下面还有」提示、ref）/ 「高级」折叠 | `Typography.Title`、`Collapse` |
+| `ScrollArea` | 纵向滚动区：「下面还有」提示 + ref（右栏、参数区） | `Button` |
 | `EmptyState` | 图标 + 文案 + 操作按钮的空状态 / 缺配置引导 | `Empty` |
 | `StatusTag` | 带图标的状态标签：排队 / 进行中 / 成功 / 失败 / 警告 / 已取消 | `Tag` |
 | `FieldHint` | 右栏参数提示 / 警示 | — |
-| `LogViewer` + `useLogger` / `pushLog` | 彩色日志，跟随但可上翻；内置清空、复制全部；组件外写入通道 | `Button`、`Tooltip` |
+| `LogViewer` + `LogActions` + `useLogger` / `pushLog` | 彩色日志，跟随但可上翻；清空、复制全部（放标题栏或日志区右侧）；组件外写入通道 | `Button`、`Tooltip` |
 | `ProgressPanel` | 批处理进度 | `Progress` |
 | `ThemeToggle` / `ThemeMenu` | 明暗切换 / 主题下拉 | `Button`、`Dropdown` |
 | `ThemePicker` | 主题选择（配色色块 + 区分度提示） | `Tag`、`Tooltip` |
@@ -391,7 +392,11 @@ ui-kit 对 antd 组件的用法约定：
   - 页面上的删除、清空用 `<Button danger>`（描边）或 `<Button danger type="text">`，**带 `DeleteOutlined` / `ClearOutlined` 图标**，文案以「…」结尾表示会先确认。
   - **实心危险按钮（`danger type="primary"`）只出现在确认弹窗里**：`modal.confirm({ okButtonProps: { danger: true } })`。它取代该弹窗的主按钮，不与实心主按钮同屏并排。
   - 同一区域不同时出现实心主按钮和实心危险按钮。
-- **清空列表**：`<Button type="link" size="small">` 放在卡片标题右侧（Card 的 `extra`）。清空日志不用另写按钮：`<LogViewer onClear={clear} />` 自带「清空」「复制全部」。
+- **清空列表**：`<Button type="link" size="small">` 放在卡片标题右侧（Card 的 `extra`）。
+- **日志的清空 / 复制全部**：放在日志卡片的标题栏——`<Panel extra={<LogActions logs={logs} onClear={clear} />}>` + `<LogViewer logs={logs} />`（推荐，与「清空列表」同一位置）。省事写法 `<LogViewer onClear={clear} />` 会把两个按钮竖排在日志区**右侧一列**，不盖住文字（1.4.0 浮在右上角，会挡住长行末尾）。复制写系统剪贴板已在 Tauri（macOS WKWebView）真实窗口验证。
+- **「下面还有内容」**：右栏、参数区这类在最小窗口下会被截断的滚动区，内容超出且没滚到底时底部浮一个「下面还有」小按钮（`ScrollArea` / `SettingsScroll` / `Workspace` 右栏默认开启），点击向下滚一屏。关键参数离得远时（如提示词下面的「比例与张数」），在参数卡片标题栏放一个 `type="link" size="small"` 的跳转入口（`ArrowDownOutlined` 在文字后），用滚动容器的 ref 找到控件（`id` 给控件本身，antd `Form.Item` 不把 id 落到 DOM）再 `closest(".ant-form-item").scrollIntoView()`。不要用渐隐遮罩：毛玻璃面上渐隐色对不上底色。
+- **「高级」折叠**：低频、默认值大多数人不用改的参数（背景、输出格式、种子、重试次数）收进 `AdvancedSection`，放在参数区最后、默认折叠。标题「高级」，有偏离默认值的项时标题旁显示「已改 N 项」，右侧放「恢复默认」link 按钮；展开后与上面的 Form.Item 左对齐（组件已去掉 Collapse 的左右内边距，不要再写 `-mx-3`）。高频参数不要藏进去；一个页面最多一个「高级」。设置页同样适用（放在对应分区的最后）。
+- **图片的裁切与完整显示**：缩略图、图库瓦片默认 `fit="cover"`（居中裁切铺满）；长条图（如 1376 × 383 的切片）或一组比例差异很大的图用 `fit="contain"`（完整显示，瓦片底色作留白），否则看不出形状。图库可在标题栏给「裁切 / 完整」切换（`Segmented size="small"`）。
 - **行尾操作**（`ListRow` / `FileRow` 的 `trailing`、表格操作列）：一律 `<Button type="text" size="small" icon aria-label>` 外套 `Tooltip`，**最多 3 个常用操作**，按「查看 → 编辑 → 状态操作（重试 / 取消）」排；其余（复制、打开文件夹、删除）收进最后一个「更多」（`MoreOutlined` + antd `Dropdown`），删除放菜单最后、`danger`、文案带「…」并走确认弹窗。一个操作要先选对象（如多张图里选一张继续修改）时，图标按钮外套 `Dropdown`，菜单项写清对象。
 - **参数提示与警示**（右栏）：单项说明写在 `Form.Item extra`；依赖其他参数的提示用 `<FieldHint>`（11px 说明色 + 信息图标），会被拦下或有代价的写 `<FieldHint type="warning">`（警告文字色 + 感叹号），都放在相关控件下方。300px 右栏里不用 `Alert`（太重）；要用户改正的错误用 `Form.Item` 的 `validateStatus` / `help`；整页级问题才用 `<Alert showIcon>`，放在左侧列表上方。
 - **空状态**：一句话、无操作时用 `<Empty image={Empty.PRESENTED_IMAGE_SIMPLE}>`；需要引导（缺配置、去添加）时用 `EmptyState`（图标 + 主文案 + 说明 + 一个按钮）。图标用说明文字色，不要用 `quaternary`（只给禁用态）。

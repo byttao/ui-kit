@@ -2,6 +2,54 @@
 
 版本号遵循语义化版本：主版本号变化表示有不兼容的接口或视觉规范调整，次版本号表示新增主题 / 组件，修订号表示修复。
 
+## 1.5.0 · 2026-11-14
+
+处理绘境真实窗口验收后记下的问题（摩擦点第九节）。新增组件与参数、没有删除或改名任何导出，所以是次版本（不是 1.4.1）。
+
+### 修复
+
+- **`LogViewer` 的工具条盖住长日志行末尾。** 传 `onClear` / `copyable` 时，「复制全部」「清空」不再浮在日志区右上角，改为日志区右侧单独一列竖排，不与文字重叠。
+
+### 新增
+
+- `LogActions`：日志的「复制全部」「清空」图标按钮，放在 Panel 标题栏：`<Panel extra={<LogActions logs={logs} onClear={clear} />}>`（推荐写法，四个配方已改用）。
+- `LogViewer` 新增 `toolbar="side" | "none"`（none 时不渲染工具条）与 `copyText`（自定义写剪贴板，如 Tauri clipboard-manager 插件）；`LogActions` 同样支持 `copyText`。导出 `LogViewerProps`、`LogActionsProps`、`CopyText` 类型。
+- `ImageGrid`、`ThumbStrip` 新增 `fit="cover" | "contain"`（`Thumb` 已有）：长条图、比例悬殊的一组图完整显示。
+- `ScrollArea`：纵向滚动区，内容超出且没滚到底时底部浮「下面还有」小按钮（点击下滚一屏），ref 指向滚动容器。
+- `SettingsScroll` 支持 `ref`（指向滚动容器，可滚到某个字段）与 `moreHint`（默认开启）。
+- `Workspace` 右栏滚动区改用 `ScrollArea`：新增 `asideRef`、`asideMoreHint`（默认开启）。
+- `AdvancedSection`：「高级」折叠（antd Collapse ghost），与上下 Form.Item 左对齐，不再需要 `-mx-3`；`changedCount` 显示「已改 N 项」，`extra` 放「恢复默认」。
+- 配方：任务队列页加「高级」折叠与标题栏「比例与张数 ↓」跳转入口（演示 `SettingsScroll` 的 ref）；图库页加「裁切 / 完整」切换；四个配方的日志按钮改放标题栏。
+- 审计新增：「下面还有」提示按钮、「已改 N 项」标签。每种组合 69 组（毛玻璃 149 组），42 种组合全过。
+- demo「组件一览」：长日志行两种工具条对比、`ImageGrid` cover / contain 切换（含 1376 × 383 长条样图）、`ScrollArea` 提示、`AdvancedSection`。
+
+### 验证
+
+- **「复制全部」写系统剪贴板已在真实 Tauri 窗口验证**：Tauri 2.12.5（macOS WKWebView）加载 demo，用辅助功能接口按下「复制全部日志」，`pbpaste` 读到完整的 9 行日志（含中文）。Windows（WebView2）未验证。
+
+### 约定（design.md / AI_GUIDE）
+
+- 日志的清空 / 复制全部放日志卡片标题栏（`LogActions`），与「清空列表」同一位置。
+- 会被截断的滚动区给「下面还有」提示；关键参数离得远时，参数卡片标题栏放跳转入口；不用渐隐遮罩（毛玻璃面上对不上底色）。
+- 「高级」折叠：低频参数放参数区最后、默认折叠，标题旁「已改 N 项」，右侧「恢复默认」；一个页面最多一个。
+- 图片默认 cover，长条图 / 比例悬殊时 contain，图库可给「裁切 / 完整」切换。
+
+### 不兼容变化
+
+没有删改导出。视觉上的差别：
+
+- `LogViewer` 传 `onClear` / `copyable` 时，工具条从「浮在右上角」变成「右侧一列」，日志区宽度少约 28px。想保持全宽，改用 `LogActions` 放标题栏。
+- `SettingsScroll` 与 `Workspace` 右栏多了一层不滚动的外层（用于定位提示按钮）；`className` 仍作用在滚动容器上。内容超出时会出现「下面还有」按钮，不想要传 `moreHint={false}` / `asideMoreHint={false}`。
+
+### 从 1.4.0 升级
+
+1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git --exclude .claude <ui-kit>/ src/ui-kit/`（`theme-init.js` 未改）。
+2. 自写的日志按钮（如绘境 `src/components/LogActions.tsx`）换成 kit 的 `LogActions`，放在 Panel 的 `extra`；`LogViewer` 不再传 `onClear`。
+3. 图库从外层写的 `[&_img]:object-contain` 换成 `ImageGrid` 的 `fit="contain"`。
+4. 参数区自写的 IntersectionObserver +「比例与张数 ↓」：滚动提示交给 `SettingsScroll`（默认开启）；跳转入口保留，滚动容器改用 `SettingsScroll` 的 ref。
+5. `Collapse ghost` + `-mx-3` 的「高级」折叠换成 `AdvancedSection`。
+6. 跑 `npm run build`、`antd lint`。
+
 ## 1.4.0 · 2026-11-13
 
 绘境升级到 1.3.0 后记下的问题（摩擦点第七、八节）全部处理；新增四个页面配方，AI_GUIDE 第 6 步改成「先选配方再写页面」。新增组件与参数、没有删除或改名任何导出，所以是次版本。

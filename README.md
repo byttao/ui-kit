@@ -1,6 +1,6 @@
 # ui-kit · Tauri 2 + React + Ant Design 6 桌面界面套件
 
-**版本 1.4.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
+**版本 1.5.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
 
 以 **Ant Design v6** 为主：控件、动效、主题系统、色彩体系都用 antd；ui-kit 只补 antd 没覆盖的部分——12px 高密度正文、AA 对比度、随主题变化的侧栏与深色表面、桌面工具的页面骨架、列表 / 缩略图 / 设置页等应用级组件和 Tauri 集成。
 
@@ -47,11 +47,12 @@ ui-kit/
 │   ├── image-grid.tsx        ImageGrid（可选中图片瓦片、双击大图、选中自动滚到可见）
 │   ├── ratio.tsx             RatioIcon / RatioSelect / RatioPreview / parseRatio（比例图示、选择器、宫格预览）
 │   ├── error-boundary.tsx    ErrorBoundary（渲染出错兜底：整窗 / 单页）
-│   ├── settings-section.tsx  SettingsSection / SettingsScroll（设置页分区、长表单滚动）
+│   ├── settings-section.tsx  SettingsSection / SettingsScroll（「下面还有」提示、ref）/ AdvancedSection（高级折叠）
+│   ├── scroll-area.tsx       ScrollArea（纵向滚动区 +「下面还有」提示 + ref）
 │   ├── empty-state.tsx       EmptyState（图标 + 文案 + 操作）
 │   ├── status-tag.tsx        StatusTag（带图标的状态标签预设）
 │   ├── field-hint.tsx        FieldHint（右栏参数提示 / 警示）
-│   ├── log-viewer.tsx        LogViewer（内置清空、复制全部）+ useLogger + pushLog
+│   ├── log-viewer.tsx        LogViewer + LogActions（清空、复制全部，放标题栏）+ useLogger + pushLog
 │   ├── progress-panel.tsx    ProgressPanel（antd Progress）
 │   ├── theme-toggle.tsx      ThemeToggle
 │   ├── theme-menu.tsx        ThemeMenu（侧栏主题切换）
@@ -249,8 +250,8 @@ import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, Progress
       </Panel>
     </Workspace>
 
-    <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0">
-      <LogViewer logs={logs} onClear={clear} />
+    <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0" extra={<LogActions logs={logs} onClear={clear} />}>
+      <LogViewer logs={logs} />
     </Panel>
   </Page>
 </AppShell>
@@ -292,6 +293,10 @@ import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, Progress
 | 定位到某条 | 列表：`useRowFlash` 的 `flash(id)`（闪 2 秒并滚到可见）；图库：改 `ImageGrid` 的 `selectedKey` |
 | 可点击的标签 | `<LinkTag onClick>改自 #7</LinkTag>`（跳转 / 定位用） |
 | 图片上的角标 | `<ImageBadge>#12-3</ImageBadge>`（实底卡片色 + 描边） |
+| 日志清空 / 复制 | `<Panel extra={<LogActions logs={logs} onClear={clear} />}>` + `<LogViewer logs={logs} />` |
+| 低频参数 | 参数区最后放 `<AdvancedSection changedCount extra>`（默认折叠） |
+| 长条图 / 比例悬殊的图 | `ImageGrid` / `Thumb` / `ThumbStrip` 的 `fit="contain"` |
+| 滚动区有更多内容 | `ScrollArea` / `SettingsScroll` / `Workspace` 右栏默认显示「下面还有」；用 ref 滚到某个字段 |
 | 错误兜底 | 入口 `<ErrorBoundary>`；每个功能页 `<ErrorBoundary size="page">` |
 | 本地图片 | `Thumb`（缩略图）、`ThumbStrip`（缩略图条 / 参考图墙）、`ImageGrid`（图库） |
 | 比例 / 尺寸选择 | `<RatioSelect options={[{ value: "1:1", size: "1024 × 1024" }]} />` + `<RatioPreview ratio cols rows caption />` |
@@ -389,7 +394,7 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 
 两种检查：
 
-- `npm run check:contrast`（demo 目录）：用 `lib/audit.ts` 的清单逐组计算，7 主题 × 深浅 × 侧栏样式 × 毛玻璃开关 = 42 种组合；每种 67 组对比度（含 1.3.0 / 1.4.0 新组件：中性标签、失败行标签、缩略图占位与说明、瓦片选中描边、图片角标、可点击标签、比例预览、参数提示 / 警示、导航徽标），毛玻璃组合共 147 组（再加每个背景色块上的卡片文字、参数警示、列表、表头与日志）+ 3 组区分度（主色与危险 / 警告 / 成功的 ΔE）。对比度不达标退出码为 1；区分度不足只警告。
+- `npm run check:contrast`（demo 目录）：用 `lib/audit.ts` 的清单逐组计算，7 主题 × 深浅 × 侧栏样式 × 毛玻璃开关 = 42 种组合；每种 69 组对比度（含 1.3.0 / 1.4.0 新组件：中性标签、失败行标签、缩略图占位与说明、瓦片选中描边、图片角标、可点击标签、比例预览、参数提示 / 警示、导航徽标），毛玻璃组合共 149 组（再加每个背景色块上的卡片文字、参数警示、列表、表头与日志）+ 3 组区分度（主色与危险 / 警告 / 成功的 ΔE）。对比度不达标退出码为 1；区分度不足只警告。
 - demo「对比度」页：同一份清单的可视化，含样张。
 
 **改任何颜色后都要跑一遍，必须全绿。** 清单覆盖不到的组合（自写元素的新配色），在 demo 里打开对应页面目测，或补进 `lib/audit.ts`。
@@ -398,7 +403,7 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 
 ## 九、迁移
 
-**升级**：见 CHANGELOG.md 各版本的「从上一版升级」（1.3.0 → 1.4.0、1.2.0 → 1.3.0）。
+**升级**：见 CHANGELOG.md 各版本的「从上一版升级」（1.4.0 → 1.5.0、1.3.0 → 1.4.0、1.2.0 → 1.3.0）。
 
 **从 ui-kit v1（shadcn 结构）**：
 

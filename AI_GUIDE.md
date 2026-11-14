@@ -42,7 +42,7 @@ rsync -a --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/
 cp src/ui-kit/theme-init.js public/theme-init.js
 ```
 
-当前版本 **1.4.0**（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md` 的「从上一版升级」。
+当前版本 **1.5.0**（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md` 的「从上一版升级」。
 
 ## 第 3 步：依赖
 
@@ -241,7 +241,7 @@ export default function App() {
 ### 配方 · 批处理页
 
 - **何时用**：一批文件、一个总进度、一次跑完。
-- **骨架**：`Page` > `Workspace`（左：`DropZone` + `ListWell` > `FileRow`；右：设置 `Panel`，`asideFooter` = `ProgressPanel` + 主按钮）+ 底部日志 `Panel` > `LogViewer onClear`。
+- **骨架**：`Page` > `Workspace`（左：`DropZone` + `ListWell` > `FileRow`；右：设置 `Panel`，`asideFooter` = `ProgressPanel` + 主按钮）+ 底部日志 `<Panel extra={<LogActions logs onClear />}>` > `LogViewer`。
 - **状态与空态**：`files`、`failed`（失败标记）、`running`、`progress`；列表空时 `<Empty image={Empty.PRESENTED_IMAGE_SIMPLE}>`；有文件后 `DropZone compact`；跑完后成功的移出、失败的留下标红，重新添加时清除失败标记；处理中禁用拖拽（`useFileDrop(add, { enabled: active && !running })`）。
 - **主按钮**：「开始转换 · N 张」，处理中显示「处理中…」并禁用。
 - **数据层**（`BatchBackend`）：
@@ -269,7 +269,8 @@ const tauriBatchBackend: BatchBackend = {
 ### 配方 · 任务队列页
 
 - **何时用**：任务各自独立、可并发、排队 / 取消 / 重试。
-- **骨架**：`Page` > `Workspace`（左：`ListWell` > `ListRow`；右：一张 `<Panel fill className="min-h-0 flex-1">` + `SettingsScroll` 放参数，`asideFooter` 主按钮）+ 底部日志。
+- **骨架**：`Page` > `Workspace`（左：`ListWell` > `ListRow`；右：一张 `<Panel fill className="min-h-0 flex-1">` + `SettingsScroll` 放参数，低频参数收进最后的 `AdvancedSection`，`asideFooter` 主按钮）+ 底部日志。
+- **参数区导航**：`SettingsScroll` 内容超出时自带「下面还有」提示；关键参数离得远时，参数卡片标题栏放「比例与张数 ↓」这类跳转入口，用 `SettingsScroll` 的 ref：`ref.current?.querySelector("#控件id")?.closest(".ant-form-item")?.scrollIntoView({ behavior: "smooth" })`（antd `Form.Item` 不把 `id` 落到 DOM，id 要给控件本身）。
 - **行**：`leading` = `Thumb`（运行中 `loading`）；`meta` = `StatusTag` + 参数 `Tag` + `LinkTag`（「改自 #n」，点击 `flash(parent.id)`）；`extra` = 运行中的 `Progress`、报错文字、多合一的 `ThumbStrip`（`caption` 常显 `#n-i`）；`trailing` 最多 3 个图标按钮 + 「更多」。失败行 `status="error"` + `failedLabel={false}`（行里已有失败 Tag）。
 - **定位**：`const { flashKey, flash } = useRowFlash()`，行上 `highlight={flashKey === t.id}`；外部跳转（如从图库「定位到任务」）传 `focus={{ id, nonce: Date.now() }}`，先切页再定位。
 - **状态与空态**：列表只由 `useTaskEvents` 维护（Rust 推事件），提交 / 重试 / 取消只调命令、不本地改列表；加载中 `EmptyState size="small" title="正在读取任务…"`，空队列 `EmptyState` 引导写提示词；缺配置（API Key）时 `EmptyState` + 「去设置」按钮。
@@ -295,6 +296,7 @@ const queueApi: QueueApi = {
 - **何时用**：按「每张图」浏览已产出的结果。
 - **骨架**：`Page` > `Workspace`（左：`Segmented` 筛选（Panel `extra`）+ `ListWell className="p-3"` > `ImageGrid`；右：`<Panel fill title="图片信息" className="min-h-0 flex-1">` 内部滚动的详情，`asideFooter` 主按钮）+ 底部日志。
 - **瓦片角标**：编号用 `<ImageBadge>#12-3</ImageBadge>` + `badgePlacement="top-left"`。
+- **裁切 / 完整**：标题栏给 `Segmented` 切换 `ImageGrid` 的 `fit`；有长条图时默认「完整」。
 - **状态与空态**：`items` 由任务列表派生（每个成功任务的每个文件一项）；选中项可受控——外部改 `selectedKey` 即定位，`ImageGrid` 自动滚到可见，选中项被筛掉时切回「全部」；没有图时 `EmptyState`，没选中时详情区 `EmptyState size="small"`。
 - **主按钮**：「继续修改 · 这张」；详情区放次级按钮（大图预览、复制、打开文件夹、定位到任务、`danger` 的「删除记录…」）。
 - **数据层**：`items` + `onEdit` / `onReveal`（`revealItemInDir(path)`，opener 插件）/ `onRemove`（`invoke("remove_tasks")`）/ `onLocateTask`。
@@ -319,7 +321,7 @@ const queueApi: QueueApi = {
 8. **毛玻璃**只通过 `glass` 开关；卡片级容器用 `Panel` 才会自动变成玻璃面，不要自己写 `backdrop-filter`。
 9. **反馈**：`const { message, modal, notification } = App.useApp()`，然后照常 `message.success(...)`。不要 `import { message } from "antd"` 后调用静态方法（拿不到主题）。
 10. **布局**：每个功能页 = `Page` > `Workspace`（左列表、右设置栏 + `asideFooter`，右栏宽度全应用一致）+ 底部日志 `Panel`。只让列表 / 日志 / 参数区滚动，`Page` 本身不滚。列表卡片 `<Panel fill className="flex-1">`。**有状态的功能页常驻、用 `hidden` 切换**，不要按 `page === x &&` 卸载（日志、草稿、事件订阅会丢）。
-11. **日志**：每个功能页各自 `useLogger()`，不要多页共用一份；清空 / 复制用 `<LogViewer onClear={clear} />`。页面挂载前就可能产生的日志（Rust 启动时发的事件）在 `main.tsx` 里订阅并 `pushLog("页面名", msg, level)`，页面用 `useLogger({ channel: "页面名" })` 接收。
+11. **日志**：每个功能页各自 `useLogger()`，不要多页共用一份；清空 / 复制用 `<Panel extra={<LogActions logs={logs} onClear={clear} />}>`。页面挂载前就可能产生的日志（Rust 启动时发的事件）在 `main.tsx` 里订阅并 `pushLog("页面名", msg, level)`，页面用 `useLogger({ channel: "页面名" })` 接收。
 12. **批处理部分失败**：成功的移出列表，失败的留下并用 `FileRow status="error"` / `ListRow status="error"`（表格用 `FILE_ROW_ERROR_CLASS` + `FailedMark`）标红，方便重试。失败行里的 antd 文字与中性 Tag 会自动继承红字，不用手写 `text-inherit`。
 13. **拖拽**只用 `useFileDrop`（窗口级 Tauri 事件）。不要用 HTML5 `onDrop`，也不要用 antd `Upload.Dragger`（都拿不到本地路径）。
 14. **本地图片**用 `<Thumb path={…} />`（缩略图）、`<ThumbStrip items={…} />`（缩略图条 / 参考图墙）、`<ImageGrid items={…} />`（图库网格），它们内部用 `convertFileSrc`，依赖第 4 步的 assetProtocol、CSP 与 Cargo `protocol-asset`。自己拼地址时用 `localImageSrc(path)`。
@@ -327,11 +329,12 @@ const queueApi: QueueApi = {
 16. **右栏提示**：单项说明写 `Form.Item extra`；依赖其他参数的提示 / 警示用 `<FieldHint>` / `<FieldHint type="warning">`，不要在 300px 右栏里放 `Alert`。空状态需要引导操作时用 `EmptyState`。侧栏徽标用 `NavBadge`，不用 antd `Badge`（默认红色是危险语义）。
 17. **内联 `style`** 只给运行时算出的数据（宽高比、列数、调用方传入的尺寸、要原样展示的色块）；颜色、间距、字号一律用类名。
 18. **可点击的标签**（既表达状态 / 关系，又能跳转定位，如「改自 #7」）用 `LinkTag`，不要给 `Tag` 自己补 `role="button"` 与键盘事件；会改数据的操作仍用 `Button`。
-19. **定位高亮**：跳到某条记录用 `useRowFlash` 的 `flash(id)`（主色内描边 2 秒，自动滚到可见）；图库定位用 `ImageGrid` 的受控 `selectedKey`（自动滚到可见）。目标在另一页时先切页再定位。
-20. **图片上的文字**（编号、张数、模型名角标）用 `ImageBadge`（实底卡片色 + 描边 + 正文色），不要用 `bg-spotlight`、半透明黑底或主色底。
-21. **错误兜底**：入口在 `ThemeProvider` 里面包一层 `ErrorBoundary`；每个常驻功能页再包 `<ErrorBoundary size="page">`。事件回调、Promise 里的异常进不了错误边界，用 try/catch + `message` / 日志。
-22. **比例 / 尺寸选择**用 `RatioSelect`（选项可带尺寸说明），下面配 `RatioPreview`；「整张等分拆切」不要传 `cellRatio`，每张比例写进 `caption`。
-23. **v6 弃用 API 不要写**：`Space direction`（用 `orientation`）、`Alert message`（用 `title`）、`Progress trailColor`（用 `railColor`）。以 `antd lint` 的结果为准。
+19. **日志按钮**：「清空」「复制全部」用 `<Panel extra={<LogActions logs={logs} onClear={clear} />}>`，不要自己写这两个按钮。**低频参数**收进 `AdvancedSection`（参数区最后、默认折叠）。
+20. **定位高亮**：跳到某条记录用 `useRowFlash` 的 `flash(id)`（主色内描边 2 秒，自动滚到可见）；图库定位用 `ImageGrid` 的受控 `selectedKey`（自动滚到可见）。目标在另一页时先切页再定位。
+21. **图片上的文字**（编号、张数、模型名角标）用 `ImageBadge`（实底卡片色 + 描边 + 正文色），不要用 `bg-spotlight`、半透明黑底或主色底。
+22. **错误兜底**：入口在 `ThemeProvider` 里面包一层 `ErrorBoundary`；每个常驻功能页再包 `<ErrorBoundary size="page">`。事件回调、Promise 里的异常进不了错误边界，用 try/catch + `message` / 日志。
+23. **比例 / 尺寸选择**用 `RatioSelect`（选项可带尺寸说明），下面配 `RatioPreview`；「整张等分拆切」不要传 `cellRatio`，每张比例写进 `caption`。
+24. **v6 弃用 API 不要写**：`Space direction`（用 `orientation`）、`Alert message`（用 `title`）、`Progress trailColor`（用 `railColor`）。以 `antd lint` 的结果为准。
 
 ## 组件速查（从 `./ui-kit` 导入）
 
@@ -343,7 +346,7 @@ const queueApi: QueueApi = {
 | `NavBadge` | `count` `max=99` `tone="accent"\|"muted"` `showZero?`；传给 `NavItem.badge` |
 | `Page` | `fill`（默认 true 不滚动；内容型页面传 `fill={false}` 整页滚动） |
 | `PageHeader` | `eyebrow?` `title` `description?` `actions?` |
-| `Workspace` | `aside` `asideFooter?`（常驻主按钮区）`asideWidth=300` `children` |
+| `Workspace` | `aside` `asideFooter?`（常驻主按钮区）`asideWidth=300` `asideRef?` `asideMoreHint=true` `children` |
 | `Panel` | antd `Card` 的全部参数 + `fill`（内容区撑满卡片） |
 | `Topbar` / `StatusBar` | 普通容器，传给 AppShell 的 `topbar` / `statusbar` |
 | `DropZone` | `active` `onBrowse` `title?` `hint?` `icon?` `compact?` `disabled?` |
@@ -354,8 +357,8 @@ const queueApi: QueueApi = {
 | `LinkTag` | antd Tag 的全部参数 + `onClick` `disabled`；可点击标签（跳转 / 定位） |
 | `FILE_ROW_ERROR_CLASS` / `FailedMark` | antd Table 失败行的 `rowClassName` / 失败图标 + 文字 |
 | `Thumb` | `path?` `size="xs"\|"sm"\|"md"\|"lg"\|"fill"` `ratio?` `fit="cover"\|"contain"` `loading?` `preview=true` `open?` `onOpenChange?` `alt?` |
-| `ThumbStrip` | `items: (string \| { key?, path, alt?, caption?, badge? })[]` `size="sm"` `columns?` `onRemove?(key)` `preview=true` `showName?` |
-| `ImageGrid` | `items: { key, path, alt?, badge? }[]` `selectedKey?`（变化时自动滚到可见）`onSelect?` `minTileWidth=148` `ratio=1` `preview=true` `previewIndex?` `onPreviewIndexChange?` `badgePlacement="bottom-left"\|"top-left"` `scrollToSelected=true` |
+| `ThumbStrip` | `items: (string \| { key?, path, alt?, caption?, badge? })[]` `size="sm"` `columns?` `onRemove?(key)` `preview=true` `showName?` `fit="cover"\|"contain"` |
+| `ImageGrid` | `items: { key, path, alt?, badge? }[]` `selectedKey?`（变化时自动滚到可见）`onSelect?` `minTileWidth=148` `ratio=1` `preview=true` `previewIndex?` `onPreviewIndexChange?` `badgePlacement="bottom-left"\|"top-left"` `scrollToSelected=true` `fit="cover"\|"contain"` |
 | `ImageBadge` | 图片上的角标（编号、张数） |
 | `localImageSrc(path)` | 本地路径 → `convertFileSrc`（浏览器里原样返回） |
 | `RatioIcon` | `ratio`（"16:9" / 1.5 / [16, 9] / "auto"）`size=16` |
@@ -363,11 +366,14 @@ const queueApi: QueueApi = {
 | `RatioPreview` | `ratio` `cols=1` `rows=1` `cellRatio?`（只用于「合成后每格居中裁切」）`labels=true` `height=110` `caption?` `autoText?` |
 | `parseRatio(value)` | → `[宽, 高] \| null` |
 | `SettingsSection` | `title` `description?` `extra?` `children` |
-| `SettingsScroll` | 长表单滚动容器，`maxWidth=640` |
+| `SettingsScroll` | 长表单滚动容器，`maxWidth=640` `moreHint=true`；ref 指向滚动容器 |
+| `AdvancedSection` | 「高级」折叠：`title="高级"` `changedCount?` `extra?` `defaultOpen=false` `open?` `onOpenChange?` |
+| `ScrollArea` | 纵向滚动区：`moreHint=true`（「下面还有」）`rootClassName?`；ref 指向滚动容器 |
 | `EmptyState` | `icon?` `title?` `description?` `action?` `size="default"\|"small"` |
 | `StatusTag` | `status="queued"\|"processing"\|"success"\|"error"\|"warning"\|"cancelled"`，`children` 覆盖文案 |
 | `FieldHint` | `type="info"\|"warning"` `children` |
-| `LogViewer` | `logs` `onClear?` `copyable?`（传 onClear 时默认开）`emptyText?` |
+| `LogViewer` | `logs` `onClear?` `copyable?`（传 onClear 时默认开）`toolbar="side"\|"none"` `copyText?` `emptyText?` |
+| `LogActions` | `logs` `onClear?` `copyable=true` `copyText?`；放 Panel 的 `extra` |
 | `useLogger(options?)` | `useLogger()` / `useLogger(500)` / `useLogger({ limit, channel })` → `{ logs, log, clear }`；`log(msg, "info"\|"success"\|"warning"\|"error"\|"processing")` |
 | `pushLog(channel, msg, level?)` | 组件外写日志，页面挂载前的先缓冲 |
 | `ProgressPanel` | `progress: BatchProgress \| null`（null 时不渲染） |

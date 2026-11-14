@@ -12,6 +12,7 @@ import { ApiOutlined, KeyOutlined, RollbackOutlined } from "@ant-design/icons";
 import { App as AntApp, Button, Checkbox, Descriptions, Form, Input, InputNumber, Radio, Segmented, Space, Typography } from "antd";
 import {
   EmptyState,
+  LogActions,
   LogViewer,
   Page,
   Panel,
@@ -270,8 +271,14 @@ export function SettingsPage({ api }: { api: SettingsApi }) {
         </Panel>
       </Workspace>
 
-      <Panel fill title="设置日志" size="small" className="h-[170px] shrink-0">
-        <LogViewer logs={logs} onClear={clear} emptyText="测试连接、保存设置的结果会显示在这里" />
+      <Panel
+        fill
+        title="设置日志"
+        size="small"
+        className="h-[170px] shrink-0"
+        extra={<LogActions logs={logs} onClear={clear} />}
+      >
+        <LogViewer logs={logs} emptyText="测试连接、保存设置的结果会显示在这里" />
       </Panel>
     </Page>
   );

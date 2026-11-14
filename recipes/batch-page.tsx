@@ -12,6 +12,7 @@ import {
   DropZone,
   FileRow,
   ListWell,
+  LogActions,
   LogViewer,
   Page,
   Panel,
@@ -155,8 +156,14 @@ export function BatchPage({ backend, active = true }: BatchPageProps) {
         </Panel>
       </Workspace>
 
-      <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0">
-        <LogViewer logs={logs} onClear={clear} />
+      <Panel
+        fill
+        title="处理日志"
+        size="small"
+        className="h-[170px] shrink-0"
+        extra={<LogActions logs={logs} onClear={clear} />}
+      >
+        <LogViewer logs={logs} />
       </Panel>
     </Page>
   );

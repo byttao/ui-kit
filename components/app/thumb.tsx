@@ -135,6 +135,8 @@ export interface ThumbStripProps {
   preview?: boolean;
   /** 悬停显示文件名 */
   showName?: boolean;
+  /** cover（默认）居中裁切；contain 完整显示（长条图、比例差异大的一组图） */
+  fit?: "cover" | "contain";
   className?: string;
 }
 
@@ -154,6 +156,7 @@ export function ThumbStrip({
   onRemove,
   preview = true,
   showName,
+  fit = "cover",
   className,
 }: ThumbStripProps) {
   if (!items.length) return null;
@@ -171,6 +174,7 @@ export function ThumbStrip({
           <Thumb
             path={item.path}
             size={grid ? "fill" : size}
+            fit={fit}
             alt={name || `第 ${i + 1} 张`}
             preview={preview}
           />

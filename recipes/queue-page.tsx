@@ -7,8 +7,9 @@
  *        Rust 推 task-updated / task-removed，前端不自己改列表。demo 用 recipes/mock.ts 的 createMockQueueApi；
  *        Tauri 写法见 AI_GUIDE「配方 · 任务队列页」。
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDownOutlined,
   BranchesOutlined,
   CopyOutlined,
   DeleteOutlined,
@@ -21,11 +22,13 @@ import {
 } from "@ant-design/icons";
 import { App as AntApp, Button, Dropdown, Form, Input, Progress, Segmented, Tag, Tooltip, Typography } from "antd";
 import {
+  AdvancedSection,
   EmptyState,
   FieldHint,
   LinkTag,
   ListRow,
   ListWell,
+  LogActions,
   LogViewer,
   Page,
   Panel,
@@ -120,6 +123,15 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
   const [count, setCount] = useState(1);
   const [parent, setParent] = useState<QueueTask | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 低频参数收进「高级」；changedCount 让折叠着也看得出有改动
+  const [background, setBackground] = useState("auto");
+  const [format, setFormat] = useState("png");
+  const advancedChanged = Number(background !== "auto") + Number(format !== "png");
+  // 参数区的滚动容器：小窗口下标题栏给一个「比例与张数 ↓」入口直接滚过去
+  const scroller = useRef<HTMLDivElement>(null);
+  const jumpToSize = () =>
+    // antd Form.Item 不把 id 落到 DOM 上：id 给控件（Select 会传给内部 input），再滚它所在的表单项
+    scroller.current?.querySelector("#queue-ratio")?.closest(".ant-form-item")?.scrollIntoView({ block: "start", behavior: "smooth" });
 
   useEffect(() => {
     if (focus) flash(focus.id);
@@ -169,8 +181,17 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
       <Workspace
         aside={
           // 参数多：一张 fill 卡片 + SettingsScroll，只滚参数区；主按钮在 asideFooter 常驻
-          <Panel fill title="出图参数" className="min-h-0 flex-1">
-            <SettingsScroll>
+          <Panel
+            fill
+            title="出图参数"
+            className="min-h-0 flex-1"
+            extra={
+              <Button type="link" size="small" icon={<ArrowDownOutlined />} iconPlacement="end" onClick={jumpToSize}>
+                比例与张数
+              </Button>
+            }
+          >
+            <SettingsScroll ref={scroller}>
               <Form layout="vertical" component="div" className="contents">
                 {parent && (
                   <FieldHint>
@@ -192,7 +213,7 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
                   </Form.Item>
                 )}
                 <Form.Item label="比例">
-                  <RatioSelect value={ratio} onChange={setRatio} options={RATIOS} />
+                  <RatioSelect id="queue-ratio" value={ratio} onChange={setRatio} options={RATIOS} />
                 </Form.Item>
                 <Form.Item
                   label="张数"
@@ -214,6 +235,47 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
                     !r ? undefined : count > 1 ? `整张 ${ratio} · ${cols} × ${rows} 等分，每张 ${r[0] * rows}:${r[1] * cols}` : `单张 · ${ratio}`
                   }
                 />
+                <AdvancedSection
+                  changedCount={advancedChanged}
+                  extra={
+                    <Button
+                      type="link"
+                      size="small"
+                      disabled={!advancedChanged}
+                      onClick={() => {
+                        setBackground("auto");
+                        setFormat("png");
+                      }}
+                    >
+                      恢复默认
+                    </Button>
+                  }
+                >
+                  <Form.Item label="背景">
+                    <Segmented
+                      block
+                      value={background}
+                      onChange={(v) => setBackground(String(v))}
+                      options={[
+                        { value: "auto", label: "自动" },
+                        { value: "transparent", label: "透明" },
+                        { value: "opaque", label: "不透明" },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item label="输出格式">
+                    <Segmented
+                      block
+                      value={format}
+                      onChange={(v) => setFormat(String(v))}
+                      options={[
+                        { value: "png", label: "PNG" },
+                        { value: "jpeg", label: "JPEG" },
+                        { value: "webp", label: "WebP" },
+                      ]}
+                    />
+                  </Form.Item>
+                </AdvancedSection>
               </Form>
             </SettingsScroll>
           </Panel>
@@ -290,8 +352,14 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
         </Panel>
       </Workspace>
 
-      <Panel fill title="队列日志" size="small" className="h-[170px] shrink-0">
-        <LogViewer logs={logs} onClear={clear} emptyText="加入队列、重试、取消的记录会显示在这里" />
+      <Panel
+        fill
+        title="队列日志"
+        size="small"
+        className="h-[170px] shrink-0"
+        extra={<LogActions logs={logs} onClear={clear} />}
+      >
+        <LogViewer logs={logs} emptyText="加入队列、重试、取消的记录会显示在这里" />
       </Panel>
     </Page>
   );

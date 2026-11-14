@@ -2,6 +2,7 @@ import * as React from "react";
 import { Card, Layout, Menu, Typography, type CardProps, type MenuProps } from "antd";
 import { useTheme } from "../../theme";
 import { cn } from "../../lib/cn";
+import { ScrollArea } from "./scroll-area";
 
 export interface NavItem<K extends string = string> {
   key: K;
@@ -262,6 +263,10 @@ export interface WorkspaceProps {
   asideFooter?: React.ReactNode;
   /** 右栏宽度，默认 300；同一应用所有页面保持一致 */
   asideWidth?: number;
+  /** 右栏滚动区（aside 那一层）的 ref，用来滚到某个字段 */
+  asideRef?: React.Ref<HTMLDivElement>;
+  /** 右栏滚动区内容超出时底部的「下面还有」提示，默认开启（参数卡片内部用 SettingsScroll 时它自己也有提示） */
+  asideMoreHint?: boolean | React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -275,7 +280,15 @@ export interface WorkspaceProps {
  *   asideFooter={<><ProgressPanel progress={progress} /><Button type="primary" block>开始转换 · 5 张</Button></>}
  * >
  */
-export function Workspace({ className, aside, asideFooter, asideWidth = 300, children }: WorkspaceProps) {
+export function Workspace({
+  className,
+  aside,
+  asideFooter,
+  asideWidth = 300,
+  asideRef,
+  asideMoreHint = true,
+  children,
+}: WorkspaceProps) {
   return (
     <div
       className={cn("grid min-h-0 flex-1 gap-5", className)}
@@ -283,14 +296,12 @@ export function Workspace({ className, aside, asideFooter, asideWidth = 300, chi
       style={{ gridTemplateColumns: `minmax(0,1fr) ${asideWidth}px` }}
     >
       <div className="flex min-h-0 min-w-0 flex-col">{children}</div>
-      {asideFooter === undefined ? (
-        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">{aside}</div>
-      ) : (
-        <div className="flex min-h-0 flex-col gap-4">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">{aside}</div>
-          <div className="flex shrink-0 flex-col gap-3">{asideFooter}</div>
-        </div>
-      )}
+      <div className="flex min-h-0 flex-col gap-4">
+        <ScrollArea ref={asideRef} moreHint={asideMoreHint} className="flex flex-col gap-4">
+          {aside}
+        </ScrollArea>
+        {asideFooter !== undefined && <div className="flex shrink-0 flex-col gap-3">{asideFooter}</div>}
+      </div>
     </div>
   );
 }

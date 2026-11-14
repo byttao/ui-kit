@@ -14,6 +14,7 @@ import {
   ImageBadge,
   ImageGrid,
   ListWell,
+  LogActions,
   LogViewer,
   Page,
   Panel,
@@ -67,6 +68,8 @@ export function GalleryPage({
   const [filter, setFilter] = useState("all");
   const [innerSelected, setInnerSelected] = useState<string | null>(null);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  // 长条图、比例差异大的一组图用「完整」，否则看不出形状
+  const [fit, setFit] = useState<"cover" | "contain">("cover");
   const selectedKey = selectedProp !== undefined ? selectedProp : innerSelected;
   const select = (key: string | null) => {
     if (selectedProp === undefined) setInnerSelected(key);
@@ -182,12 +185,23 @@ export function GalleryPage({
           className="flex-1"
           title={`图库 · ${shown.length} 张`}
           extra={
+            <span className="flex items-center gap-2">
+            <Segmented
+              size="small"
+              value={fit}
+              onChange={(v) => setFit(v as "cover" | "contain")}
+              options={[
+                { value: "cover", label: "裁切" },
+                { value: "contain", label: "完整" },
+              ]}
+            />
             <Segmented
               size="small"
               value={filter}
               onChange={(v) => setFilter(String(v))}
               options={[{ value: "all", label: "全部" }, ...groups.map((g) => ({ value: g, label: g }))]}
             />
+            </span>
           }
         >
           <ListWell className="p-3">
@@ -201,6 +215,7 @@ export function GalleryPage({
               <ImageGrid
                 items={shown.map((i) => ({ key: i.key, path: i.path, alt: i.title, badge: <ImageBadge>{i.label}</ImageBadge> }))}
                 badgePlacement="top-left"
+                fit={fit}
                 selectedKey={selected?.key ?? null}
                 onSelect={select}
                 previewIndex={previewIndex}
@@ -211,8 +226,14 @@ export function GalleryPage({
         </Panel>
       </Workspace>
 
-      <Panel fill title="图库日志" size="small" className="h-[170px] shrink-0">
-        <LogViewer logs={logs} onClear={clear} emptyText="复制、打开文件夹、删除等操作记录会显示在这里" />
+      <Panel
+        fill
+        title="图库日志"
+        size="small"
+        className="h-[170px] shrink-0"
+        extra={<LogActions logs={logs} onClear={clear} />}
+      >
+        <LogViewer logs={logs} emptyText="复制、打开文件夹、删除等操作记录会显示在这里" />
       </Panel>
     </Page>
   );
