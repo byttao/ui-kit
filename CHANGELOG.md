@@ -2,6 +2,43 @@
 
 版本号遵循语义化版本：主版本号变化表示有不兼容的接口或视觉规范调整，次版本号表示新增主题 / 组件，修订号表示修复。
 
+## 1.6.0 · 2026-11-14
+
+处理绘境升级到 1.5.0 后记下的三条问题（摩擦点第十一节）。新增导出（`ScrollField`、`useFieldScroll`、`scrollToField`、`FIELD_ATTR`）与参数，没有删除或改名任何导出，所以是次版本。
+
+### 修复
+
+- **「下面还有」按钮盖住底边那一行内容、在设置页里像控件选项。** 改为滚动区**下方**的提示行：虚线分隔 + 说明色 11px「向下滚动查看更多 ↓」，占自己的 24px 高度（滚动区相应变矮），不叠在内容上，也不是按钮外观；点击向下滚一屏，滚到底自动消失。`ScrollArea`、`SettingsScroll`、`Workspace` 右栏是同一实现，三处一致。
+- **`AdvancedSection` 长标题在 300px 右栏换行。** 标题单行省略；「已改 N 项」与「恢复默认」不收缩、不换行；新增 `description`（标题下第二行，说明色、单行省略）。
+
+### 新增
+
+- `ScrollField`：字段锚点，包住一个或几个表单项（只加 `data-kit-field` 属性，不依赖 antd 内部类名）。
+- `scrollToField(container, name)` 与 `useFieldScroll()`：只滚指定的滚动容器，字段顶部对齐容器顶部；`useFieldScroll()` 返回给 `SettingsScroll` / `ScrollArea` 用的 `ref` 与 `scrollToField(name)`。
+- `AdvancedSection` 新增 `description`。
+- 配方：任务队列页「比例与张数 ↓」改用 `ScrollField` + `useFieldScroll`。
+- demo「组件一览」：300px 宽的 `AdvancedSection`（过长标题 + 说明 + 已改 N 项 + 恢复默认）、`ScrollArea` 提示行 + 按字段滚动。
+- 审计：「滚动提示行」「高级折叠 · 说明」（说明文字 · 卡片底；毛玻璃下由「说明 · 色块」覆盖）。每种组合 70 组（毛玻璃 150 组），42 种组合全过。
+
+### 约定（design.md / AI_GUIDE）
+
+- 滚动提示放在滚动区下方、占自己的高度，不叠在内容上、不做成按钮外观；不用渐隐遮罩。
+- 按字段滚动用 `ScrollField` + `scrollToField`，不再写 `querySelector("#id").closest(".ant-form-item")`。
+- `AdvancedSection` 标题 2–4 个字，说明写 `description`。
+
+### 不兼容变化
+
+没有删改导出。视觉上的差别：
+
+- `moreHint` 的默认文字从「下面还有」变成「向下滚动查看更多」，样式从浮动小按钮变成下方提示行；内容超出时滚动区会矮 24px。传了自定义 `moreHint` 文字的照常显示在提示行里。
+
+### 从 1.5.0 升级
+
+1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git --exclude .claude <ui-kit>/ src/ui-kit/`（`theme-init.js` 未改）。
+2. 「比例与张数 ↓」这类跳转：`const fields = useFieldScroll()`，`<SettingsScroll ref={fields.ref}>`，目标表单项外包 `<ScrollField name="size">`，点击时 `fields.scrollToField("size")`；删掉 `querySelector("#…").closest(".ant-form-item")` 与控件上为此加的 `id`。
+3. `AdvancedSection` 的标题若写过「高级 · xxx」，改回「高级」，说明放 `description`。
+4. 跑 `npm run build`、`antd lint`。
+
 ## 1.5.0 · 2026-11-14
 
 处理绘境真实窗口验收后记下的问题（摩擦点第九节）。新增组件与参数、没有删除或改名任何导出，所以是次版本（不是 1.4.1）。

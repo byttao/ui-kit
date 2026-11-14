@@ -42,7 +42,7 @@ rsync -a --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/
 cp src/ui-kit/theme-init.js public/theme-init.js
 ```
 
-当前版本 **1.5.0**（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md` 的「从上一版升级」。
+当前版本 **1.6.0**（`package.json` / `UI_KIT_VERSION`）；升级前读 `CHANGELOG.md` 的「从上一版升级」。
 
 ## 第 3 步：依赖
 
@@ -270,7 +270,7 @@ const tauriBatchBackend: BatchBackend = {
 
 - **何时用**：任务各自独立、可并发、排队 / 取消 / 重试。
 - **骨架**：`Page` > `Workspace`（左：`ListWell` > `ListRow`；右：一张 `<Panel fill className="min-h-0 flex-1">` + `SettingsScroll` 放参数，低频参数收进最后的 `AdvancedSection`，`asideFooter` 主按钮）+ 底部日志。
-- **参数区导航**：`SettingsScroll` 内容超出时自带「下面还有」提示；关键参数离得远时，参数卡片标题栏放「比例与张数 ↓」这类跳转入口，用 `SettingsScroll` 的 ref：`ref.current?.querySelector("#控件id")?.closest(".ant-form-item")?.scrollIntoView({ behavior: "smooth" })`（antd `Form.Item` 不把 `id` 落到 DOM，id 要给控件本身）。
+- **参数区导航**：`SettingsScroll` 内容超出时，下方自带「向下滚动查看更多」提示行（不遮挡内容）；关键参数离得远时，参数卡片标题栏放「比例与张数 ↓」跳转入口：`const fields = useFieldScroll()`，`<SettingsScroll ref={fields.ref}>`，目标表单项外包 `<ScrollField name="size">`，点击 `fields.scrollToField("size")`。
 - **行**：`leading` = `Thumb`（运行中 `loading`）；`meta` = `StatusTag` + 参数 `Tag` + `LinkTag`（「改自 #n」，点击 `flash(parent.id)`）；`extra` = 运行中的 `Progress`、报错文字、多合一的 `ThumbStrip`（`caption` 常显 `#n-i`）；`trailing` 最多 3 个图标按钮 + 「更多」。失败行 `status="error"` + `failedLabel={false}`（行里已有失败 Tag）。
 - **定位**：`const { flashKey, flash } = useRowFlash()`，行上 `highlight={flashKey === t.id}`；外部跳转（如从图库「定位到任务」）传 `focus={{ id, nonce: Date.now() }}`，先切页再定位。
 - **状态与空态**：列表只由 `useTaskEvents` 维护（Rust 推事件），提交 / 重试 / 取消只调命令、不本地改列表；加载中 `EmptyState size="small" title="正在读取任务…"`，空队列 `EmptyState` 引导写提示词；缺配置（API Key）时 `EmptyState` + 「去设置」按钮。
@@ -367,8 +367,9 @@ const queueApi: QueueApi = {
 | `parseRatio(value)` | → `[宽, 高] \| null` |
 | `SettingsSection` | `title` `description?` `extra?` `children` |
 | `SettingsScroll` | 长表单滚动容器，`maxWidth=640` `moreHint=true`；ref 指向滚动容器 |
-| `AdvancedSection` | 「高级」折叠：`title="高级"` `changedCount?` `extra?` `defaultOpen=false` `open?` `onOpenChange?` |
-| `ScrollArea` | 纵向滚动区：`moreHint=true`（「下面还有」）`rootClassName?`；ref 指向滚动容器 |
+| `AdvancedSection` | 「高级」折叠：`title="高级"`（2–4 个字，超长单行省略）`description?`（第二行）`changedCount?` `extra?` `defaultOpen=false` `open?` `onOpenChange?` |
+| `ScrollArea` | 纵向滚动区：`moreHint=true`（下方「向下滚动查看更多」提示行，不遮挡内容）`rootClassName?`；ref 指向滚动容器 |
+| `ScrollField` / `useFieldScroll()` / `scrollToField(el, name)` | 字段锚点 `<ScrollField name>`；`const { ref, scrollToField } = useFieldScroll()`，ref 给 `SettingsScroll` / `ScrollArea` |
 | `EmptyState` | `icon?` `title?` `description?` `action?` `size="default"\|"small"` |
 | `StatusTag` | `status="queued"\|"processing"\|"success"\|"error"\|"warning"\|"cancelled"`，`children` 覆盖文案 |
 | `FieldHint` | `type="info"\|"warning"` `children` |

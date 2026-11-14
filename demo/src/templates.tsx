@@ -8,6 +8,8 @@ import {
   LogActions,
   LogViewer,
   ScrollArea,
+  ScrollField,
+  useFieldScroll,
   ErrorBoundary,
   FieldHint,
   ImageBadge,
@@ -51,6 +53,7 @@ export function NewComponents() {
   const { flashKey, flash } = useRowFlash();
   const [fit, setFit] = useState<"cover" | "contain">("contain");
   const [format, setFormat] = useState("png");
+  const fields = useFieldScroll();
   const gallery = [...SAMPLE_IMAGES, "/samples/strip.svg"].map((path, i) => ({
     key: path,
     path,
@@ -232,21 +235,33 @@ export function NewComponents() {
       </div>
 
       <div className="grid grid-cols-2 gap-5">
-        <Panel fill title="ScrollArea · 下面还有" className="h-[220px]">
-          <ScrollArea>
+        <Panel
+          fill
+          title="ScrollArea · 提示行 + 按字段滚动"
+          className="h-[220px]"
+          extra={
+            <Button type="link" size="small" onClick={() => fields.scrollToField("row-12")}>
+              第 12 行 ↓
+            </Button>
+          }
+        >
+          <ScrollArea ref={fields.ref}>
             {Array.from({ length: 14 }, (_, i) => (
-              <p key={i} className="m-0 py-1">
-                第 {i + 1} 行参数
-              </p>
+              <ScrollField key={i} name={`row-${i + 1}`}>
+                <p className="m-0 py-1">第 {i + 1} 行参数（最后一行文字不会被提示挡住）</p>
+              </ScrollField>
             ))}
           </ScrollArea>
         </Panel>
-        <Panel title="AdvancedSection · 高级折叠">
+        {/* 300px：与右栏同宽，检查长标题、已改 N 项、恢复默认的排布 */}
+        <Panel title="AdvancedSection · 300px 右栏宽" className="w-[300px] justify-self-end">
           <Form layout="vertical" component="div" className="flex flex-col gap-3 [&_.ant-form-item]:mb-0">
             <Form.Item label="常用参数（对齐参照）">
               <Segmented block options={["1 张", "2 合 1", "4 合 1"]} />
             </Form.Item>
             <AdvancedSection
+              title="高级 · 合图分辨率与输出格式（演示过长标题）"
+              description="合图分辨率、背景、输出格式"
               changedCount={format !== "png" ? 1 : 0}
               extra={
                 <Button type="link" size="small" disabled={format === "png"} onClick={() => setFormat("png")}>

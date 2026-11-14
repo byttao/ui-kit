@@ -7,7 +7,7 @@
  *        Rust 推 task-updated / task-removed，前端不自己改列表。demo 用 recipes/mock.ts 的 createMockQueueApi；
  *        Tauri 写法见 AI_GUIDE「配方 · 任务队列页」。
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownOutlined,
   BranchesOutlined,
@@ -34,6 +34,7 @@ import {
   Panel,
   RatioPreview,
   RatioSelect,
+  ScrollField,
   SettingsScroll,
   StatusTag,
   Thumb,
@@ -41,6 +42,7 @@ import {
   Workspace,
   parseRatio,
   useLogger,
+  useFieldScroll,
   useRowFlash,
   useTaskEvents,
   type TaskListen,
@@ -127,11 +129,8 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
   const [background, setBackground] = useState("auto");
   const [format, setFormat] = useState("png");
   const advancedChanged = Number(background !== "auto") + Number(format !== "png");
-  // 参数区的滚动容器：小窗口下标题栏给一个「比例与张数 ↓」入口直接滚过去
-  const scroller = useRef<HTMLDivElement>(null);
-  const jumpToSize = () =>
-    // antd Form.Item 不把 id 落到 DOM 上：id 给控件（Select 会传给内部 input），再滚它所在的表单项
-    scroller.current?.querySelector("#queue-ratio")?.closest(".ant-form-item")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  // 参数区按字段滚动：小窗口下标题栏给一个「比例与张数 ↓」入口直接滚过去
+  const fields = useFieldScroll();
 
   useEffect(() => {
     if (focus) flash(focus.id);
@@ -186,12 +185,12 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
             title="出图参数"
             className="min-h-0 flex-1"
             extra={
-              <Button type="link" size="small" icon={<ArrowDownOutlined />} iconPlacement="end" onClick={jumpToSize}>
+              <Button type="link" size="small" icon={<ArrowDownOutlined />} iconPlacement="end" onClick={() => fields.scrollToField("size")}>
                 比例与张数
               </Button>
             }
           >
-            <SettingsScroll ref={scroller}>
+            <SettingsScroll ref={fields.ref}>
               <Form layout="vertical" component="div" className="contents">
                 {parent && (
                   <FieldHint>
@@ -212,29 +211,32 @@ export function QueuePage({ api, focus, onOpenInGallery }: QueuePageProps) {
                     <ThumbStrip items={parent.files.slice(0, 1)} columns={4} onRemove={() => setParent(null)} showName />
                   </Form.Item>
                 )}
-                <Form.Item label="比例">
-                  <RatioSelect id="queue-ratio" value={ratio} onChange={setRatio} options={RATIOS} />
-                </Form.Item>
-                <Form.Item
-                  label="张数"
-                  extra={
-                    multiBlocked ? (
-                      <FieldHint type="warning">{multiBlocked}</FieldHint>
-                    ) : count > 1 ? (
-                      <FieldHint>一次请求画 {count} 个方案，按 {cols} × {rows} 等分拆成 {count} 张</FieldHint>
-                    ) : undefined
-                  }
-                >
-                  <Segmented block options={COUNTS} value={count} onChange={(v) => setCount(Number(v))} />
-                </Form.Item>
-                <RatioPreview
-                  ratio={ratio}
-                  cols={cols}
-                  rows={rows}
-                  caption={
-                    !r ? undefined : count > 1 ? `整张 ${ratio} · ${cols} × ${rows} 等分，每张 ${r[0] * rows}:${r[1] * cols}` : `单张 · ${ratio}`
-                  }
-                />
+                {/* 字段锚点：scrollToField("size") 滚到这里（比例、张数、预览一组） */}
+                <ScrollField name="size">
+                  <Form.Item label="比例">
+                    <RatioSelect value={ratio} onChange={setRatio} options={RATIOS} />
+                  </Form.Item>
+                  <Form.Item
+                    label="张数"
+                    extra={
+                      multiBlocked ? (
+                        <FieldHint type="warning">{multiBlocked}</FieldHint>
+                      ) : count > 1 ? (
+                        <FieldHint>一次请求画 {count} 个方案，按 {cols} × {rows} 等分拆成 {count} 张</FieldHint>
+                      ) : undefined
+                    }
+                  >
+                    <Segmented block options={COUNTS} value={count} onChange={(v) => setCount(Number(v))} />
+                  </Form.Item>
+                  <RatioPreview
+                    ratio={ratio}
+                    cols={cols}
+                    rows={rows}
+                    caption={
+                      !r ? undefined : count > 1 ? `整张 ${ratio} · ${cols} × ${rows} 等分，每张 ${r[0] * rows}:${r[1] * cols}` : `单张 · ${ratio}`
+                    }
+                  />
+                </ScrollField>
                 <AdvancedSection
                   changedCount={advancedChanged}
                   extra={

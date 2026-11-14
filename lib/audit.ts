@@ -105,8 +105,10 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
   add("组件", "可点击标签 · 悬停", t.colorPrimaryText, container);
   add("组件", "可点击标签 · 不可用", t.colorTextTertiary, container);
   add("组件", "缩略图说明", t.colorTextTertiary, container);
-  // 1.5.0：ScrollArea「下面还有」是 antd 默认小按钮（正文色 · 卡片底）；AdvancedSection 的「已改 N 项」是中性标签
-  add("组件", "下面还有 · 提示按钮", t.colorText, container);
+  // 1.6.0：ScrollArea「向下滚动查看更多」是滚动区下方的说明色提示行（毛玻璃下另见「说明 · 色块」）；
+  // AdvancedSection 的「已改 N 项」是中性标签、description 是说明文字
+  add("组件", "滚动提示行", t.colorTextTertiary, container);
+  add("组件", "高级折叠 · 说明", t.colorTextTertiary, container);
   add("组件", "高级折叠 · 已改标签", t.colorText, solid(t.colorFillTertiary, container));
 
   add("主色", "链接 · 卡片", t.colorLink, container);

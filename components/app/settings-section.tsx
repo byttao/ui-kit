@@ -43,7 +43,7 @@ export function SettingsSection({ title, description, extra, children, className
 export interface SettingsScrollProps extends React.HTMLAttributes<HTMLDivElement> {
   /** 表单内容最大宽度，默认 640px（长表单不铺满宽屏） */
   maxWidth?: number;
-  /** 「下面还有内容」提示，默认开启；见 ScrollArea */
+  /** 「下面还有内容」提示行（在滚动区下方，不遮挡内容），默认开启；见 ScrollArea */
   moreHint?: boolean | React.ReactNode;
 }
 
@@ -52,8 +52,9 @@ export interface SettingsScrollProps extends React.HTMLAttributes<HTMLDivElement
  * 内容纵向排布、分区间距 20px，并去掉 antd Form.Item 的默认下边距（间距由分区统一控制）。
  * 与 ListWell 的区别：没有描边和底色，是表单而不是列表。
  *
- * - 内容超出且没滚到底时，底部浮一个「下面还有」小按钮（`moreHint={false}` 关闭）。
- * - ref 指向滚动容器：`ref.current?.querySelector("#控件id")?.closest(".ant-form-item")?.scrollIntoView({ behavior: "smooth" })` 滚到某个字段（id 给控件本身，antd Form.Item 不把 id 落到 DOM）。
+ * - 内容超出且没滚到底时，滚动区下方出现「向下滚动查看更多」提示行（不遮挡内容；`moreHint={false}` 关闭）。
+ * - 滚到某个字段：表单项外包 `<ScrollField name="ratio">`，再 `useFieldScroll()` 的 `scrollToField("ratio")`
+ *   （或 `scrollToField(ref.current, "ratio")`），不依赖 antd 内部类名。ref 仍指向滚动容器。
  */
 export const SettingsScroll = React.forwardRef<HTMLDivElement, SettingsScrollProps>(function SettingsScroll(
   { maxWidth = 640, moreHint = true, className, children, ...props },
@@ -73,8 +74,10 @@ export const SettingsScroll = React.forwardRef<HTMLDivElement, SettingsScrollPro
 });
 
 export interface AdvancedSectionProps {
-  /** 折叠标题，默认「高级」 */
+  /** 折叠标题，默认「高级」。300px 右栏里保持 2–4 个字（「高级」「更多参数」），超出单行省略；说明写进 description */
   title?: React.ReactNode;
+  /** 标题下的一行说明（11px 说明色，单行省略），如「合图分辨率、背景、输出格式」 */
+  description?: React.ReactNode;
   /** 已偏离默认值的项数：> 0 时标题旁显示「已改 N 项」，折叠着也看得出有改动 */
   changedCount?: number;
   /** 标题右侧的操作（如「恢复默认」link 按钮），点击不会触发折叠 */
@@ -101,6 +104,7 @@ export interface AdvancedSectionProps {
  */
 export function AdvancedSection({
   title = "高级",
+  description,
   changedCount = 0,
   extra,
   defaultOpen = false,
@@ -122,22 +126,26 @@ export function AdvancedSection({
         if (open === undefined) setInnerOpen(next);
         onOpenChange?.(next);
       }}
-      classNames={{ header: "!px-0 !py-1", body: "!px-0 !pb-0 !pt-2", title: "font-strong" }}
+      // title 要能收缩（min-w-0），否则长标题会把整行挤成两行
+      classNames={{ header: "!px-0 !py-1 !items-center", body: "!px-0 !pb-0 !pt-2", title: "min-w-0 font-strong" }}
       items={[
         {
           key: "advanced",
           label: (
-            <span className="flex items-center gap-2">
-              {title}
-              {changedCount > 0 && (
-                <Tag className="m-0" variant="filled">
-                  已改 {changedCount} 项
-                </Tag>
-              )}
+            <span className="flex min-w-0 flex-col">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 truncate">{title}</span>
+                {changedCount > 0 && (
+                  <Tag className="m-0 shrink-0" variant="filled">
+                    已改 {changedCount} 项
+                  </Tag>
+                )}
+              </span>
+              {description && <span className="truncate text-sm font-normal text-text-tertiary">{description}</span>}
             </span>
           ),
           extra: extra ? (
-            <span onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+            <span onClick={(e) => e.stopPropagation()} className="flex shrink-0 items-center gap-2 whitespace-nowrap">
               {extra}
             </span>
           ) : undefined,

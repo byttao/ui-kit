@@ -1,28 +1,72 @@
 import * as React from "react";
 import { DownOutlined } from "@ant-design/icons";
-import { Button } from "antd";
 import { cn } from "../../lib/cn";
 
 export interface ScrollAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
-   * 「下面还有内容」提示：内容超出且没滚到底时，底部居中浮一个小按钮，点击向下滚一屏。
-   * true（默认）显示「下面还有」；传 ReactNode 自定义文字；false 关闭。
+   * 「下面还有内容」提示：内容超出且没滚到底时，滚动区**下方**出现一条提示行（细分隔线 + 说明色小字 + 向下箭头），
+   * 点击向下滚一屏。提示行占自己的高度、不叠在内容上，也不像表单控件。
+   * true（默认）文字为「向下滚动查看更多」；传 ReactNode 自定义文字；false 关闭。
    */
   moreHint?: boolean | React.ReactNode;
   /** 外层（不滚动的那一层）的 className；className 作用在滚动容器上 */
   rootClassName?: string;
 }
 
+/** 字段锚点的 data 属性名：`<ScrollField name>` 渲染 `data-kit-field="name"` */
+export const FIELD_ATTR = "data-kit-field";
+
 /**
- * 纵向滚动区：撑满父容器剩余高度、自己滚动，并在「下面还有内容」时给出提示。
- * ref 指向滚动容器本身，可用来滚到某个字段：
+ * 在滚动容器里滚到某个字段（`<ScrollField name="…">` 包住的那一块），字段顶部对齐容器顶部。
+ * 不依赖 antd 内部类名。找不到时返回 false。
  *
  * @example
- * const scroller = useRef<HTMLDivElement>(null);
- * const jump = () => scroller.current?.querySelector("#field-ratio")?.scrollIntoView({ block: "start", behavior: "smooth" });
- * <ScrollArea ref={scroller}>…</ScrollArea>
+ * scrollToField(scrollerRef.current, "ratio");
+ */
+export function scrollToField(container: HTMLElement | null | undefined, name: string, behavior: ScrollBehavior = "smooth") {
+  if (!container) return false;
+  const target = Array.from(container.querySelectorAll<HTMLElement>(`[${FIELD_ATTR}]`)).find(
+    (el) => el.getAttribute(FIELD_ATTR) === name
+  );
+  if (!target) return false;
+  // 只滚这个容器（不用 scrollIntoView：它会连带滚动外层）
+  const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+  container.scrollTo({ top: Math.max(0, top - 4), behavior });
+  return true;
+}
+
+/**
+ * 按字段滚动：返回给 `SettingsScroll` / `ScrollArea` 用的 ref，和 `scrollToField(name)`。
  *
- * 提示用 antd 小按钮（实底、带描边），毛玻璃和深浅主题下都看得清；不做渐隐遮罩（玻璃面上渐隐色对不上底色）。
+ * @example
+ * const fields = useFieldScroll();
+ * <Panel extra={<Button type="link" size="small" onClick={() => fields.scrollToField("ratio")}>比例与张数</Button>}>
+ *   <SettingsScroll ref={fields.ref}>
+ *     <ScrollField name="ratio"><Form.Item label="比例">…</Form.Item></ScrollField>
+ *   </SettingsScroll>
+ * </Panel>
+ */
+export function useFieldScroll() {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const scroll = React.useCallback((name: string, behavior: ScrollBehavior = "smooth") => scrollToField(ref.current, name, behavior), []);
+  return { ref, scrollToField: scroll };
+}
+
+/**
+ * 字段锚点：包住一个或几个表单项，给 `scrollToField(name)` 定位用。
+ * 里面的表单项纵向排布，间距默认 20px（与 SettingsScroll 顶层一致）；放在 SettingsSection 里时传 `className="gap-3"`（12px）。
+ */
+export function ScrollField({ name, className, children }: { name: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div {...{ [FIELD_ATTR]: name }} className={cn("flex flex-col gap-5", className)}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 纵向滚动区：撑满父容器剩余高度、自己滚动，并在「下面还有内容」时于下方给出提示行。
+ * ref 指向滚动容器本身；滚到某个字段用 `ScrollField` + `scrollToField` / `useFieldScroll`。
  */
 export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(function ScrollArea(
   { moreHint = true, rootClassName, className, children, onScroll, ...props },
@@ -43,7 +87,7 @@ export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(func
     const el = ref.current;
     if (!el || moreHint === false) return;
     measure();
-    // 容器尺寸变化（窗口缩放）与内容高度变化（折叠展开、条件字段）都要重新判断
+    // 容器尺寸变化（窗口缩放、提示行出现 / 消失）与内容高度变化（折叠展开、条件字段）都要重新判断
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     for (const child of Array.from(el.children)) observer.observe(child);
@@ -58,10 +102,10 @@ export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(func
     };
   }, [measure, moreHint]);
 
-  const hint = moreHint === true ? "下面还有" : moreHint;
+  const hint = moreHint === true ? "向下滚动查看更多" : moreHint;
 
   return (
-    <div className={cn("relative flex min-h-0 flex-1 flex-col", rootClassName)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col", rootClassName)}>
       <div
         ref={ref}
         onScroll={(e) => {
@@ -74,19 +118,19 @@ export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(func
         {children}
       </div>
       {moreHint !== false && more && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
-          <Button
-            size="small"
-            shape="round"
-            icon={<DownOutlined />}
-            className="pointer-events-auto shadow-secondary"
-            onClick={() => {
-              const el = ref.current;
-              el?.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
-            }}
-          >
-            {hint}
-          </Button>
+        // 提示行在滚动区下方、占自己的高度：不盖住任何内容；样式是分隔线 + 说明色小字，不像表单控件。
+        // 键盘用户用 Tab 进入滚动区即可滚动，这一行只是鼠标的快捷入口，所以不进 Tab 顺序
+        <div
+          role="presentation"
+          tabIndex={-1}
+          onClick={() => {
+            const el = ref.current;
+            el?.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
+          }}
+          className="flex h-6 shrink-0 cursor-pointer select-none items-center justify-center gap-1 border-t border-dashed text-sm text-text-tertiary transition-colors duration-fast hover:text-text-secondary"
+        >
+          <span>{hint}</span>
+          <DownOutlined aria-hidden className="text-[10px]" />
         </div>
       )}
     </div>
