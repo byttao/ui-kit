@@ -158,7 +158,10 @@ export function AppShell<K extends string>({
           {sidebarFooter && (
             <div
               className={cn(
-                "flex shrink-0 items-center justify-between gap-2 border-t border-sidebar-border py-3 text-sm text-sidebar-muted",
+                // 与 StatusBar 等高（48px，含上边线），内容垂直居中，不靠 padding 撑高。
+                // 浅色侧栏与 StatusBar 用同一条边线色（默认 border token）；主题色 / 深色侧栏用 sidebar-border
+                "flex h-12 shrink-0 items-center justify-between gap-2 border-t text-sm text-sidebar-muted",
+                sidebar !== "light" && "border-sidebar-border",
                 compact ? "px-4" : "px-6"
               )}
             >
@@ -183,8 +186,9 @@ export function Topbar({ className, ...props }: React.HTMLAttributes<HTMLElement
   return (
     <header
       className={cn(
-        "flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-container px-8 compact:px-6",
-        glass && "kit-glass rounded-none border-x-0 border-t-0",
+        "flex h-16 shrink-0 items-center justify-between gap-4 border-b px-8 compact:px-6",
+        // 毛玻璃开启时底色只来自 kit-glass：Tailwind 工具类（bg-container）优先级高于 kit-glass，不能同时带
+        glass ? "kit-glass rounded-none border-x-0 border-t-0" : "bg-container",
         className
       )}
       {...props}
@@ -192,14 +196,18 @@ export function Topbar({ className, ...props }: React.HTMLAttributes<HTMLElement
   );
 }
 
-/** 底部状态栏：48px，显示输出位置等常驻信息。毛玻璃开启时是玻璃面。 */
+/**
+ * 底部状态栏：48px（含上边线，与侧栏底栏等高），显示输出位置等常驻信息。
+ * 毛玻璃开启时背景透明（跟主区这一列，露出背景渐变），不做玻璃面，只留上边线；关闭时是实心 bg-container。
+ * 不要给它传 bg-*：见 design.md「相邻底栏」。
+ */
 export function StatusBar({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   const { glass } = useTheme();
   return (
     <footer
       className={cn(
-        "flex min-h-12 shrink-0 items-center gap-3 border-t bg-container px-8 text-sm text-text-secondary compact:px-6",
-        glass && "kit-glass rounded-none border-x-0 border-b-0",
+        "flex min-h-12 shrink-0 items-center gap-3 border-t px-8 text-sm text-text-secondary compact:px-6",
+        !glass && "bg-container",
         className
       )}
       {...props}

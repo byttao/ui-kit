@@ -192,6 +192,19 @@ export function auditTheme(options: ThemeOptions): AuditRow[] {
       add("毛玻璃", `表头 · 色块 ${i + 1}`, t.colorTextSecondary, g.insetHeader, 4.5, cardHex);
     });
 
+    // 状态栏（StatusBar）毛玻璃下是透明的，文字直接压在背景渐变上（没有玻璃那层白）：
+    // 逐个色块中心与画布底色检查正文 / 次要 / 说明
+    [...glassBlobs(options.accent, options.resolved), t.colorBgLayout].forEach((blob, i, all) => {
+      const where = i === all.length - 1 ? "画布底色" : `色块 ${i + 1}`;
+      for (const [label, fg] of [
+        ["正文", t.colorText],
+        ["次要", t.colorTextSecondary],
+        ["说明", t.colorTextTertiary],
+      ] as const) {
+        add("毛玻璃", `状态栏${label} · ${where}`, fg, blob);
+      }
+    });
+
     // 玻璃是半透明白，叠在色块上；contrast 的第三个参数是玻璃下面那一层
     const glass = g.background;
     glassBlobs(options.accent, options.resolved).forEach((blob, i) => {
