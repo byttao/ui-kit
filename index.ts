@@ -1,7 +1,7 @@
 // ui-kit 出口：只有应用级组件与主题。控件（Button、Input、Select、Table、Modal…）直接从 "antd" 导入。
 
 /** 当前 ui-kit 版本，与 package.json 一致。 */
-export const UI_KIT_VERSION = "1.6.0";
+export const UI_KIT_VERSION = "1.6.1";
 
 export { cn } from "./lib/cn";
 export {

@@ -2,6 +2,39 @@
 
 版本号遵循语义化版本：主版本号变化表示有不兼容的接口或视觉规范调整，次版本号表示新增主题 / 组件，修订号表示修复。
 
+## 1.6.1 · 2026-11-16
+
+修复毛玻璃下 `StatusBar` / `Topbar` 底色被盖成实心的缺陷。只改内部类名，没有新增或删除导出，所以是修订版。
+
+### 修复
+
+- **毛玻璃开启时，`StatusBar`（底部状态栏）是纯白条（深色下是实心卡片色），不是和 `Panel`、侧栏一致的半透明玻璃面；`Topbar` 同理。** 原因：两个组件的根元素同时带了 `bg-container`（Tailwind 工具类，不分层、优先级最高）和 `kit-glass`（`@layer components`），`bg-container` 把 `kit-glass` 的玻璃底色盖掉了。现在毛玻璃开启时只带 `kit-glass`（底色与描边都来自玻璃面），关闭时保持 `bg-container` 实心，与 `Panel` 的行为一致。
+- 排查了其它同时带实心底色类和 `kit-glass` 的组件：`Panel`（本来就不带 `bg-*`）、`ListWell`（本来就是 `glass ? "kit-glass-inset" : "bg-container"`）都没有这个问题，只有 `Topbar` 与 `StatusBar` 受影响。
+
+### 对使用方的影响
+
+- 视觉：毛玻璃开启时，`Topbar` / `StatusBar` 从实心变回设计稿的半透明玻璃面（浅色白 20%、深色白 6%，描边同 `Panel`），与 `Panel`、侧栏同一表面；毛玻璃关闭时没有任何变化。
+- 对比度：这两个条用的是与 `Panel` 完全相同的玻璃面底色，所以文字对比度与 `Panel` 内一致；对比度审计（毛玻璃每种组合 150 组，42 种组合）全部通过（审计不单独建模顶栏 / 状态栏）。
+- 之前为绕开此缺陷写的 `className="!bg-[var(--kit-glass-bg)]"` 之类可以删掉；不删也不会出错，但会重复指定同一个底色，且今后改玻璃规格时不会跟着变。
+
+### 新增
+
+- demo 外壳现在带 `Topbar` 与 `StatusBar`，作为这类回归的检查点（7 套主题 × 深浅 × 毛玻璃开 / 关 = 28 种组合下，顶栏、状态栏与 `Panel` 的底色、描边一致）。
+
+### 约定（design.md / AI_GUIDE）
+
+- 玻璃面的底色只来自 `kit-glass`：组件里写 `glass ? "kit-glass …" : "bg-container"`，不要两者同时带；使用方也不要给 `Topbar` / `StatusBar` / `Panel` 传 `bg-*` 去改底色。
+
+### 不兼容变化
+
+没有。
+
+### 从 1.6.0 升级
+
+1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git --exclude .claude <ui-kit>/ src/ui-kit/`（只有 `components/app/app-shell.tsx` 与文档、版本号有变化；`theme-init.js` 未改）。
+2. 在业务代码里搜 `kit-glass-bg`、`!bg-[`，删掉传给 `StatusBar` / `Topbar` 的 `className="!bg-[var(--kit-glass-bg)]"` 这类绕法（毛玻璃开关的条件判断一并去掉）。
+3. 跑 `npm run build`、`antd lint`，在毛玻璃开 / 关、浅 / 深下各看一眼底部状态栏：开时是半透明玻璃面，关时是实心。
+
 ## 1.6.0 · 2026-11-14
 
 处理绘境升级到 1.5.0 后记下的三条问题（摩擦点第十一节）。新增导出（`ScrollField`、`useFieldScroll`、`scrollToField`、`FIELD_ATTR`）与参数，没有删除或改名任何导出，所以是次版本。

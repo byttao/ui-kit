@@ -52,9 +52,11 @@ import {
   Page,
   PageHeader,
   Panel,
+  StatusBar,
   ThemeProvider,
   ThemeMenu,
   ThemeToggle,
+  Topbar,
   Workspace,
   useTheme,
   type Accent,
@@ -135,6 +137,19 @@ function Shell(props: ShellProps) {
       nav={nav}
       active={page}
       onNavigate={setPage}
+      // 演示 Topbar / StatusBar：毛玻璃开 / 关下都应与 Panel 同一表面（1.6.1 修复的回归检查点）
+      topbar={
+        <Topbar>
+          <span className="font-medium">{nav.find((n) => n.key === page)?.label}</span>
+          <span className="text-sm text-text-secondary">顶栏 · Topbar</span>
+        </Topbar>
+      }
+      statusbar={
+        <StatusBar>
+          <span>输出位置：~/Pictures/处理结果</span>
+          <span className="ml-auto">状态栏 · StatusBar</span>
+        </StatusBar>
+      }
       sidebarFooter={
         <>
           <span>ui-kit {UI_KIT_VERSION}</span>

@@ -1,6 +1,6 @@
 # ui-kit · Tauri 2 + React + Ant Design 6 桌面界面套件
 
-**版本 1.6.0** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
+**版本 1.6.1** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
 
 以 **Ant Design v6** 为主：控件、动效、主题系统、色彩体系都用 antd；ui-kit 只补 antd 没覆盖的部分——12px 高密度正文、AA 对比度、随主题变化的侧栏与深色表面、桌面工具的页面骨架、列表 / 缩略图 / 设置页等应用级组件和 Tauri 集成。
 
@@ -404,7 +404,7 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 
 ## 九、迁移
 
-**升级**：见 CHANGELOG.md 各版本的「从上一版升级」（1.5.0 → 1.6.0、1.4.0 → 1.5.0、1.3.0 → 1.4.0、1.2.0 → 1.3.0）。
+**升级**：见 CHANGELOG.md 各版本的「从上一版升级」（1.6.0 → 1.6.1、1.5.0 → 1.6.0、1.4.0 → 1.5.0、1.3.0 → 1.4.0、1.2.0 → 1.3.0）。
 
 **从 ui-kit v1（shadcn 结构）**：
 

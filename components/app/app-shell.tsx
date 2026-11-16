@@ -183,8 +183,9 @@ export function Topbar({ className, ...props }: React.HTMLAttributes<HTMLElement
   return (
     <header
       className={cn(
-        "flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-container px-8 compact:px-6",
-        glass && "kit-glass rounded-none border-x-0 border-t-0",
+        "flex h-16 shrink-0 items-center justify-between gap-4 border-b px-8 compact:px-6",
+        // 毛玻璃开启时底色只来自 kit-glass：Tailwind 工具类（bg-container）优先级高于 kit-glass，不能同时带
+        glass ? "kit-glass rounded-none border-x-0 border-t-0" : "bg-container",
         className
       )}
       {...props}
@@ -198,8 +199,8 @@ export function StatusBar({ className, ...props }: React.HTMLAttributes<HTMLElem
   return (
     <footer
       className={cn(
-        "flex min-h-12 shrink-0 items-center gap-3 border-t bg-container px-8 text-sm text-text-secondary compact:px-6",
-        glass && "kit-glass rounded-none border-x-0 border-b-0",
+        "flex min-h-12 shrink-0 items-center gap-3 border-t px-8 text-sm text-text-secondary compact:px-6",
+        glass ? "kit-glass rounded-none border-x-0 border-b-0" : "bg-container",
         className
       )}
       {...props}
