@@ -172,7 +172,7 @@ import { ThemeProvider } from "./ui-kit";
 
 **深色表面**也跟随主题（1.3.0）：画布、卡片、浮层、描边、毛玻璃背景由一组参考墨色按 `sidebar` 的色相重新着色，彩度低、亮度与参考值一致，所以对比度结论不随主题变化。极客蓝与 1.2.0 逐值相同。各主题的取值见 design.md「其余覆盖」。
 
-**毛玻璃**：`<ThemeProvider glass>`。`Panel`、`Topbar`、`StatusBar` 变成玻璃面，卡片里的 `ListWell`（含其中的 antd Table）变成更实的内嵌玻璃（`rgba(255,255,255,0.2)` + `blur(16px) saturate(180%)` + 16px 圆角），背景换成主题配色的径向渐变。背景强度会自动收敛到玻璃上的 12px 文字仍 ≥ 4.5:1，所以是柔和的渐变。深色模式用低透明度版本，数值见 design.md「Colors · 毛玻璃」。
+**毛玻璃**：`<ThemeProvider glass>`。`Panel`、`Topbar` 变成玻璃面（`StatusBar` 是透明底：跟主区这一列，与侧栏底栏等高、同一条上边线），卡片里的 `ListWell`（含其中的 antd Table）变成更实的内嵌玻璃（`rgba(255,255,255,0.2)` + `blur(16px) saturate(180%)` + 16px 圆角），背景换成主题配色的径向渐变。背景强度会自动收敛到玻璃上的 12px 文字仍 ≥ 4.5:1，所以是柔和的渐变。深色模式用低透明度版本，数值见 design.md「Colors · 毛玻璃」。
 
 **主题切换**：不给 `ThemeProvider` 传 `accent` 时，主题由它自己保存并记住（`localStorage` 的 `ui-kit:accent`），用 `useTheme().setAccent` 切换。侧栏底部放 `<ThemeMenu />`（下拉列表）；设置页用 `<ThemePicker value={accent} onChange={setAccent} />`（卡片，带配色色块和区分度提示）。
 

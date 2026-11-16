@@ -137,7 +137,7 @@ function Shell(props: ShellProps) {
       nav={nav}
       active={page}
       onNavigate={setPage}
-      // 演示 Topbar / StatusBar：毛玻璃开 / 关下都应与 Panel 同一表面（1.6.1 修复的回归检查点）
+      // 演示 Topbar / StatusBar：毛玻璃开时 Topbar 与 Panel 同一玻璃面，StatusBar 透明、与侧栏底栏等高同线（1.6.1 回归检查点）
       topbar={
         <Topbar>
           <span className="font-medium">{nav.find((n) => n.key === page)?.label}</span>

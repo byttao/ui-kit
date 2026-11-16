@@ -318,7 +318,7 @@ const queueApi: QueueApi = {
 5. **按钮**：每个区域最多一个 `type="primary"`，放在 `Workspace` 的 `asideFooter`。批处理页写明数量（「开始转换 · 5 张」）；非批处理页写「动词 + 对象」（「保存设置」「继续修改 · 这张」）。「清空列表」用 `type="link" size="small"` 放在 `Panel` 的 `extra`。
 6. **危险操作**：页面上用 `<Button danger icon={<DeleteOutlined />}>删除…</Button>` 或 `danger type="text"`；**实心危险按钮只出现在 `modal.confirm({ okButtonProps: { danger: true } })` 里**，不与实心主按钮并排。
 7. **状态一律带图标**：用 `<StatusTag status="success" />`（排队 / 进行中 / 成功 / 失败 / 警告 / 已取消），或 `<Tag icon={<CheckCircleOutlined />} color="success">`、`<Alert showIcon …>`，不单靠颜色表达（部分主题的主色与功能色同色系）。
-8. **毛玻璃**只通过 `glass` 开关；卡片级容器用 `Panel` 才会自动变成玻璃面，不要自己写 `backdrop-filter`；也不要给 `Topbar` / `StatusBar` / `Panel` 传 `bg-*` 或 `!bg-[…]` 去改底色（Tailwind 工具类优先级高于玻璃类，会把玻璃盖成实心；1.6.1 起这两个组件毛玻璃下已是玻璃面，不需要绕法）。
+8. **毛玻璃**只通过 `glass` 开关；卡片级容器用 `Panel` 才会自动变成玻璃面，不要自己写 `backdrop-filter`；也不要给 `Topbar` / `StatusBar` / `Panel` 传 `bg-*` 或 `!bg-[…]` 去改底色（Tailwind 工具类优先级高于玻璃类，会把玻璃盖成实心；1.6.1 起 `Topbar` 毛玻璃下是玻璃面、`StatusBar` 毛玻璃下是透明底（跟主区这一列，与侧栏底栏等高 48px、同一条上边线），都不需要绕法）。`sidebarFooter` 与 `StatusBar` 的内容自己居中即可，不要再加 `py-*` 撑高，两栏高度由 ui-kit 保证一致。
 9. **反馈**：`const { message, modal, notification } = App.useApp()`，然后照常 `message.success(...)`。不要 `import { message } from "antd"` 后调用静态方法（拿不到主题）。
 10. **布局**：每个功能页 = `Page` > `Workspace`（左列表、右设置栏 + `asideFooter`，右栏宽度全应用一致）+ 底部日志 `Panel`。只让列表 / 日志 / 参数区滚动，`Page` 本身不滚。列表卡片 `<Panel fill className="flex-1">`。**有状态的功能页常驻、用 `hidden` 切换**，不要按 `page === x &&` 卸载（日志、草稿、事件订阅会丢）。
 11. **日志**：每个功能页各自 `useLogger()`，不要多页共用一份；清空 / 复制用 `<Panel extra={<LogActions logs={logs} onClear={clear} />}>`。页面挂载前就可能产生的日志（Rust 启动时发的事件）在 `main.tsx` 里订阅并 `pushLog("页面名", msg, level)`，页面用 `useLogger({ channel: "页面名" })` 接收。

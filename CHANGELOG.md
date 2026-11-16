@@ -4,36 +4,43 @@
 
 ## 1.6.1 · 2026-11-16
 
-修复毛玻璃下 `StatusBar` / `Topbar` 底色被盖成实心的缺陷。只改内部类名，没有新增或删除导出，所以是修订版。
+修复毛玻璃下 `StatusBar` / `Topbar` 底色被盖成实心的缺陷，并统一侧栏底栏与 `StatusBar` 相邻时的高度、边线和底色。只改内部类名与样式，没有新增或删除导出，所以是修订版。
 
 ### 修复
 
-- **毛玻璃开启时，`StatusBar`（底部状态栏）是纯白条（深色下是实心卡片色），不是和 `Panel`、侧栏一致的半透明玻璃面；`Topbar` 同理。** 原因：两个组件的根元素同时带了 `bg-container`（Tailwind 工具类，不分层、优先级最高）和 `kit-glass`（`@layer components`），`bg-container` 把 `kit-glass` 的玻璃底色盖掉了。现在毛玻璃开启时只带 `kit-glass`（底色与描边都来自玻璃面），关闭时保持 `bg-container` 实心，与 `Panel` 的行为一致。
-- 排查了其它同时带实心底色类和 `kit-glass` 的组件：`Panel`（本来就不带 `bg-*`）、`ListWell`（本来就是 `glass ? "kit-glass-inset" : "bg-container"`）都没有这个问题，只有 `Topbar` 与 `StatusBar` 受影响。
+- **毛玻璃开启时，`StatusBar`（底部状态栏）是纯白条（深色下是实心卡片色），不是半透明玻璃面；`Topbar` 同理。** 原因：两个组件的根元素同时带了 `bg-container`（Tailwind 工具类，不分层、优先级最高）和 `kit-glass`（`@layer components`），`bg-container` 把 `kit-glass` 的玻璃底色盖掉了。现在毛玻璃开启时 `Topbar` 只带 `kit-glass`（底色与描边都来自玻璃面，与 `Panel` 一致），关闭时保持 `bg-container` 实心。
+- **侧栏底栏（`sidebarFooter`）与 `StatusBar` 并排时接缝不齐：**
+  1. 高度差 1px：`sidebarFooter` 是 `py-3` + 24px 按钮 + 1px 上边线 = 49px，`StatusBar` 是 48px，两条上边线错开一行。现在两栏都是 48px（含上边线），`sidebarFooter` 改为 `h-12` 内容垂直居中，不再靠 padding 撑高。
+  2. 上边线颜色不一致：浅色侧栏下，侧栏底栏是 `sidebar-border`，`StatusBar` 是玻璃描边（白 30%，比底色还亮，几乎看不见）。现在浅色侧栏下两条线都是 `color-border-secondary`（与侧栏右侧竖线同色，竖线贯穿到底）；主题色 / 深色侧栏下侧栏那条仍用 `sidebar-border`。
+  3. 深色毛玻璃下 `StatusBar` 是比两侧都亮的玻璃色带，在侧栏边被切断。现在毛玻璃开启时 `StatusBar` **背景透明**（跟主区这一列，露出背景渐变），不再有玻璃底、模糊、玻璃描边和阴影，只留一条上边线。毛玻璃关闭时仍是实心 `bg-container`。
+- 排查了其它同时带实心底色类和 `kit-glass` 的组件：`Panel`（本来就不带 `bg-*`）、`ListWell`（本来就是 `glass ? "kit-glass-inset" : "bg-container"`）没有这个问题，只有 `Topbar` 与 `StatusBar` 受影响。
 
 ### 对使用方的影响
 
-- 视觉：毛玻璃开启时，`Topbar` / `StatusBar` 从实心变回设计稿的半透明玻璃面（浅色白 20%、深色白 6%，描边同 `Panel`），与 `Panel`、侧栏同一表面；毛玻璃关闭时没有任何变化。
-- 对比度：这两个条用的是与 `Panel` 完全相同的玻璃面底色，所以文字对比度与 `Panel` 内一致；对比度审计（毛玻璃每种组合 150 组，42 种组合）全部通过（审计不单独建模顶栏 / 状态栏）。
-- 之前为绕开此缺陷写的 `className="!bg-[var(--kit-glass-bg)]"` 之类可以删掉；不删也不会出错，但会重复指定同一个底色，且今后改玻璃规格时不会跟着变。
+- 视觉：毛玻璃开启时，`Topbar` 从实心变回半透明玻璃面；`StatusBar` 变成透明底（不是玻璃面）；侧栏底栏变矮 1px 并与 `StatusBar` 同线。毛玻璃关闭时，只有侧栏底栏高度从 49px 变成 48px、浅色侧栏下它的上边线颜色改为 `color-border-secondary`。
+- 对比度：`StatusBar` 文字（正文 / 次要 / 说明）直接压在背景渐变上，审计新增「毛玻璃 · 状态栏 … · 色块 1–5 / 画布底色」，每种毛玻璃组合多 18 组（共 168 组），42 种组合全部通过。
+- 之前为绕开此缺陷写的 `className="!bg-[var(--kit-glass-bg)]"` 之类可以删掉：不删的话它会把 `StatusBar` 重新涂成玻璃底，又和侧栏底栏对不齐。
 
 ### 新增
 
-- demo 外壳现在带 `Topbar` 与 `StatusBar`，作为这类回归的检查点（7 套主题 × 深浅 × 毛玻璃开 / 关 = 28 种组合下，顶栏、状态栏与 `Panel` 的底色、描边一致）。
+- demo 外壳现在带 `Topbar` 与 `StatusBar`，作为这类回归的检查点。
+- 审计：毛玻璃下的状态栏文字（见上）。
 
 ### 约定（design.md / AI_GUIDE）
 
 - 玻璃面的底色只来自 `kit-glass`：组件里写 `glass ? "kit-glass …" : "bg-container"`，不要两者同时带；使用方也不要给 `Topbar` / `StatusBar` / `Panel` 传 `bg-*` 去改底色。
+- 新增「相邻底栏」规则（design.md「Colors · 毛玻璃」）：侧栏底栏与 `StatusBar` 要么合成一条，要么各自继承所在列的底色，接缝处不出现第三种颜色；两栏等高 48px（含上边线）；上边线粗细一致，浅色侧栏下同色；竖线不被截断。`sidebarFooter` / `StatusBar` 内容自己居中，不加 `py-*` 撑高。
 
 ### 不兼容变化
 
-没有。
+没有删改导出。`sidebarFooter` 的容器不再带 `py-3`，改为固定 48px 高；如果你放进去的内容高于 24px（例如自己加了 `py-*` 的大按钮），会被裁切 / 溢出，请改成不超过 48px 的单行内容。
 
 ### 从 1.6.0 升级
 
-1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git --exclude .claude <ui-kit>/ src/ui-kit/`（只有 `components/app/app-shell.tsx` 与文档、版本号有变化；`theme-init.js` 未改）。
-2. 在业务代码里搜 `kit-glass-bg`、`!bg-[`，删掉传给 `StatusBar` / `Topbar` 的 `className="!bg-[var(--kit-glass-bg)]"` 这类绕法（毛玻璃开关的条件判断一并去掉）。
-3. 跑 `npm run build`、`antd lint`，在毛玻璃开 / 关、浅 / 深下各看一眼底部状态栏：开时是半透明玻璃面，关时是实心。
+1. 覆盖 ui-kit 目录：`rsync -a --delete --exclude demo --exclude .git --exclude .claude <ui-kit>/ src/ui-kit/`（`theme-init.js` 未改）。
+2. 在业务代码里搜 `kit-glass-bg`、`!bg-[`，删掉传给 `StatusBar` / `Topbar` 的 `className="!bg-[var(--kit-glass-bg)]"` 这类绕法（毛玻璃开关的条件判断一并去掉）。例如「税审·服务器管理工具」的 App 里给 `StatusBar` 传的那个 `className`。
+3. 检查 `sidebarFooter` 里有没有自己加的 `py-*` / 高于 24px 的元素，去掉。
+4. 跑 `npm run build`、`antd lint`，在毛玻璃开 / 关、浅 / 深下各看一眼窗口底部：侧栏底栏与状态栏等高、上边线在同一行；毛玻璃开时状态栏是透明的（能看到背景渐变），关时是实心。
 
 ## 1.6.0 · 2026-11-14
 
