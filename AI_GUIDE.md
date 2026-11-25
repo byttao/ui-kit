@@ -34,11 +34,11 @@ cd <项目名> && npm install
 
 ## 第 2 步：放入 ui-kit
 
-把本目录复制为 `src/ui-kit/`，**不要带 `demo/` 子目录**。
+把本目录复制为 `src/ui-kit/`，**不要带 `demo/` 和 `docs/` 子目录**。
 
 ```bash
 git clone https://github.com/byttao/ui-kit.git /tmp/ui-kit
-rsync -a --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/
+rsync -a --exclude demo --exclude docs --exclude .git /tmp/ui-kit/ src/ui-kit/
 cp src/ui-kit/theme-init.js public/theme-init.js
 ```
 
