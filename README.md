@@ -268,7 +268,7 @@ npm i -D tailwindcss@3 postcss autoprefixer
 
 没有拷 `index.ts`，所以从 `./ui-kit/theme`、`./ui-kit/antd-theme` 导入。
 
-**原则：不改 ui-kit 文件。** 字号、主色等差异都写在项目自己的包装层里，通过参数覆盖，升级时整目录覆盖即可。以编号软件（业码汇）的网页前端为例，它的包装层做了这几件事：
+**原则：不改 ui-kit 文件。** 字号、主色等差异都写在项目自己的包装层里，通过参数覆盖，升级时整目录覆盖即可。以一个内部网页项目为例，它的包装层做了这几件事：
 
 1. 主色、侧栏、毛玻璃用 `ThemeProvider` 的参数指定：`accent="geekblue" sidebar="light" glass={false}`。
 2. 正文改为 14px：在 `ThemeProvider` 里面嵌套一层 `ConfigProvider`，只覆盖字号种子，标题、行高仍由 antd 推导；再包一层 antd `App`，让 `App.useApp()` 的 message / modal 也用 14px。
