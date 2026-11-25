@@ -400,7 +400,6 @@ ui-kit/
 | [huijing](https://github.com/byttao/huijing) | 绘境：AI 出图桌面应用，任务队列与多合一拆切 |
 | [PigResizeF](https://github.com/byttao/PigResizeF) | 图片批量裁切与京东详情页分段导出 |
 | [tb-goodpic](https://github.com/byttao/tb-goodpic) | 淘宝图片下载：批量下载主图、SKU 图和详情图 |
-| [FirmMatterCodeManagement](https://github.com/byttao/FirmMatterCodeManagement) | 业码汇的网页前端，按「网页项目」方式接入（迁移进行中） |
 
 另有若干内部工具（私有仓库）。
 
