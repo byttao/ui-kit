@@ -1,88 +1,179 @@
-# ui-kit · Tauri 2 + React + Ant Design 6 桌面界面套件
+# ui-kit
 
-**版本 1.6.1** · 仓库 <https://github.com/byttao/ui-kit> · 更新记录见 [CHANGELOG.md](CHANGELOG.md)
+Tauri 2 + React 19 + Ant Design 6 的桌面界面套件：在 antd 之上补齐 12px 高密度正文、AA 对比度、7 套主题、毛玻璃、桌面页面骨架和 Tauri 集成，以源码方式拷入项目使用。
 
-以 **Ant Design v6** 为主：控件、动效、主题系统、色彩体系都用 antd；ui-kit 只补 antd 没覆盖的部分——12px 高密度正文、AA 对比度、随主题变化的侧栏与深色表面、桌面工具的页面骨架、列表 / 缩略图 / 设置页等应用级组件和 Tauri 集成。
+[![版本](https://img.shields.io/badge/version-1.6.1-3A5F3B)](CHANGELOG.md)
+![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Ant Design 6](https://img.shields.io/badge/Ant%20Design-6-1677FF?logo=antdesign&logoColor=white)
+![Tailwind CSS 3](https://img.shields.io/badge/Tailwind%20CSS-3-06B6D4?logo=tailwindcss&logoColor=white)
+
+![ui-kit demo：任务队列页（森翠雅韵 · 浅色侧栏 · 毛玻璃）](docs/images/demo-queue.png)
+
+## 目录
+
+- [它是什么](#它是什么)
+- [主题一览](#主题一览)
+- [组件清单](#组件清单)
+- [接入](#接入)
+  - [桌面项目](#桌面项目)
+  - [网页项目](#网页项目)
+- [升级](#升级)
+- [目录结构](#目录结构)
+- [使用它的项目](#使用它的项目)
+- [参考速查](#参考速查)
+
+## 它是什么
+
+以 **Ant Design v6** 为主：控件、动效、主题系统、色彩体系都用 antd。ui-kit 只补 antd 没覆盖的部分。
 
 | 来源 | 拿来了什么 |
 |---|---|
-| **Ant Design v6**（框架） | 全部控件、动效、`ConfigProvider` 主题、色彩体系（12 色板）、[design.md](https://ant.design/design.md) 设计语言 |
+| **Ant Design v6** | 全部控件、动效、`ConfigProvider` 主题、12 色板色彩体系、[antd design.md](https://ant.design/design.md) 设计语言 |
 | **Tailwind CSS v3** | 只负责布局（flex / grid / 间距 / 尺寸）和自写元素的颜色；所有值读 antd token |
-| **ui-kit**（本目录） | 主题规范 `antd-theme.ts`、设计差异 `design.md`、应用外壳、列表行、缩略图 / 图片网格、比例图示、设置页分区、空状态、日志、进度面板、Tauri hooks、应用图标脚本、对比度审计 |
+| **ui-kit**（本仓库） | 主题规范 `antd-theme.ts`（7 套主题、档位规则、侧栏、毛玻璃）、应用级组件、四个页面配方、Tauri hooks、应用图标脚本、对比度审计 |
 
-先读 **[design.md](design.md)**：它继承 antd 的 design.md，只写差异（字号、对比度、主题、侧栏、毛玻璃、页面骨架、组件用法约束）。
+三份文档分工如下，README 只做导览：
+
+| 文档 | 内容 |
+|---|---|
+| [design.md](design.md) | 设计规范：继承 antd design.md，只写差异（字号、对比度、主题、侧栏、毛玻璃、页面骨架、组件用法约束） |
+| [AI_GUIDE.md](AI_GUIDE.md) | 逐步接入指令：依赖、配置、入口、页面配方、Rust 端约定、完成后自检（写给 AI，也适合人照做） |
+| [CHANGELOG.md](CHANGELOG.md) | 各版本变化与「从上一版升级」步骤 |
+
+本地看效果：
 
 ```bash
-cd ui-kit/demo && npm install && npm run dev   # http://localhost:5180
-npm run check:contrast                          # 主题审计：42 种组合的对比度与区分度
-# demo 页面：页面配方（批处理 / 任务队列 / 图库 / 设置）、表格变体、组件一览、对比度
+cd demo && npm install && npm run dev   # http://localhost:5180
 ```
 
----
+demo 包含四个页面配方（批处理 / 任务队列 / 图库 / 设置）、表格变体、组件一览和对比度页，侧栏底部可以切换主题和明暗。
 
-## 一、目录
+## 主题一览
 
-```
-ui-kit/
-├── package.json              版本号与依赖（peerDependencies），不发布到 npm
-├── CHANGELOG.md              更新记录
-├── design.md                 设计差异（google design.md 格式，继承 antd design.md）
-├── antd-theme.ts             主题规范：主题（种子 + 配色）、功能色、档位规则、侧栏、毛玻璃 → ConfigProvider theme
-├── theme.tsx                 ThemeProvider / useTheme（StyleProvider + ConfigProvider + App）
-├── theme-init.js             首帧主题脚本（防闪烁）
-├── tailwind.preset.cjs       Tailwind preset：颜色、字号、圆角、阴影、时长都指向 antd 变量
-├── styles/base.css           桌面化基础样式（滚动条、不可选中、减弱动效）
-├── lib/
-│   ├── cn.ts                 className 合并（已登记自定义刻度）
-│   ├── contrast.ts           WCAG 对比度、OKLab ΔE
-│   └── audit.ts              主题审计清单
-├── components/app/           antd 没有的应用级组件
-│   ├── app-shell.tsx         AppShell / Topbar / StatusBar / Page / PageHeader / Workspace（asideFooter）/ Panel
-│   ├── nav-badge.tsx         NavBadge（侧栏徽标）
-│   ├── drop-zone.tsx         DropZone
-│   ├── file-list.tsx         ListWell / FileRow（含失败状态）/ FailedMark / FILE_ROW_ERROR_CLASS / fileName
-│   ├── list-row.tsx          ListRow（富列表行：缩略图、多行信息、行尾操作、失败 / 选中 / 定位高亮）+ useRowFlash
-│   ├── link-tag.tsx          LinkTag（可点击的标签：跳转 / 定位）
-│   ├── thumb.tsx             Thumb / ThumbStrip（图下说明、角标）/ ImageBadge / localImageSrc
-│   ├── image-grid.tsx        ImageGrid（可选中图片瓦片、双击大图、选中自动滚到可见）
-│   ├── ratio.tsx             RatioIcon / RatioSelect / RatioPreview / parseRatio（比例图示、选择器、宫格预览）
-│   ├── error-boundary.tsx    ErrorBoundary（渲染出错兜底：整窗 / 单页）
-│   ├── settings-section.tsx  SettingsSection / SettingsScroll（「下面还有」提示、ref）/ AdvancedSection（高级折叠）
-│   ├── scroll-area.tsx       ScrollArea（纵向滚动区 + 下方提示行）/ ScrollField / useFieldScroll / scrollToField
-│   ├── empty-state.tsx       EmptyState（图标 + 文案 + 操作）
-│   ├── status-tag.tsx        StatusTag（带图标的状态标签预设）
-│   ├── field-hint.tsx        FieldHint（右栏参数提示 / 警示）
-│   ├── log-viewer.tsx        LogViewer + LogActions（清空、复制全部，放标题栏）+ useLogger + pushLog
-│   ├── progress-panel.tsx    ProgressPanel（antd Progress）
-│   ├── theme-toggle.tsx      ThemeToggle
-│   ├── theme-menu.tsx        ThemeMenu（侧栏主题切换）
-│   └── theme-picker.tsx      ThemePicker（主题选择）
-├── tauri/
-│   ├── useFileDrop.ts        窗口级拖拽（拿得到真实路径）
-│   ├── useBatchProgress.ts   订阅 Rust 批处理进度事件
-│   ├── useTaskEvents.ts      订阅 Rust 多任务队列事件（task-updated / task-removed）+ createMockTaskBackend
-│   └── tauri.conf.snippet.json  窗口 / CSP / assetProtocol 片段（含 Cargo 与插件权限说明）
-├── recipes/                  页面配方：batch-page / queue-page / gallery-page / settings-page（完整可运行，拷到项目里改）
-│   └── mock.ts               demo / 测试用的内存数据层（不要拷进项目）
-├── scripts/icon/             应用图标：SVG → 透明 PNG → tauri icon → 逐尺寸校验透明（macOS）
-├── index.ts                  统一出口
-└── demo/                     演示与验证工程（四个页面配方、表格变体、组件一览、对比度）
+主题由 `<ThemeProvider accent>` 指定，一个主题 = 交互主色种子 + 一组配色：种子按档位规则推出按钮、链接等交互色（保证 AA），配色用在侧栏、毛玻璃背景和主题选择器上。功能色（成功 / 警告 / 危险 / 信息）不随主题变化。
+
+![7 套主题对比：任务队列页，主题色侧栏，最后一张为森翠雅韵深色](docs/images/themes.jpg)
+
+| 主题 | `accent` | 来源 | 适合 | 使用约束 |
+|---|---|---|---|---|
+| 极客蓝 | `geekblue` | antd 色板 | 偏正式的工具、网页后台；侧栏为深蓝墨色 | — |
+| 酱紫 | `purple` | antd 色板 | 需要和常见蓝色工具区分开时 | 深色下与危险色较近（ΔE ≈ 12） |
+| 明青 | `cyan` | antd 色板 | 清爽的青色调 | — |
+| **森翠雅韵**（默认） | `forest` | 自定义 | 通用；ui-kit 的默认外观 | 与「成功」同色系，成功状态必须带图标 |
+| 辉煌金韵 | `gold` | 自定义 | 暖色、醒目 | 与「警告」同色系，警告状态必须带图标 |
+| 莫兰迪色彩 | `morandi` | 自定义 | 低饱和，长时间使用不刺眼 | 深色下与危险色较近（ΔE ≈ 12） |
+| 马卡龙色彩 | `macaron` | 自定义 | 轻松的图片、创作类工具 | 与「危险」相近：页面上不出现实心危险按钮 |
+
+默认外观（`DEFAULTS`）是森翠雅韵 · 浅色 · 浅色侧栏 · 毛玻璃。`ThemeProvider` 的常用参数：
+
+| 参数 | 取值 | 说明 |
+|---|---|---|
+| `accent` | 上表的 `accent` | 不传时由 `ThemeProvider` 自己保存（`localStorage`），用 `ThemeMenu` / `ThemePicker` / `useTheme().setAccent` 切换 |
+| `mode` | `light` / `dark` / `system` | 同上；不传时自己保存 |
+| `sidebar` | `light`（默认）/ `theme` | 浅色模式下的侧栏：主题色浅底或主题色；深色模式下始终是主题色 |
+| `glass` | `true`（默认）/ `false` | 毛玻璃：卡片变成半透明玻璃面，背景换成主题配色的渐变 |
+| `onAccentChange` / `onModeChange` | 回调 | 主题要存进应用自己的设置文件时使用（写法见 [AI_GUIDE 第 5 步](AI_GUIDE.md#主题存进应用自己的设置文件受控主题)） |
+
+各主题的配色、实心色、侧栏色、区分度数值，以及侧栏、毛玻璃、深色表面的推导规则，见 [design.md「Colors」](design.md#colors)。新增主题：在 `antd-theme.ts` 的 `THEMES` 里加一项，再跑下面的审计。
+
+### 对比度审计
+
+正文 11–12px 属于小字，所有文字 / 背景组合按 WCAG AA **4.5:1** 校验，图标 3:1。审计覆盖 7 套主题 × 深浅 × 侧栏样式 × 毛玻璃开关，共 **42 种组合**：每种 70 组对比度，毛玻璃组合 168 组（额外逐个背景色块检查卡片文字、列表、表头、日志和状态栏），外加 3 组主色与危险 / 警告 / 成功的区分度（OKLab ΔE）。
+
+```bash
+cd demo && npm run check:contrast
 ```
 
----
+对比度不达标时退出码为 1；区分度不足只警告（就是上表「使用约束」里那几项）。demo 的「对比度」页是同一份清单（`lib/audit.ts`）的可视化。**改任何颜色后都要跑一遍，必须全绿。**
 
-## 二、接入新项目
+## 组件清单
 
-**1. 拷贝目录**：把 ui-kit 放进 `src/ui-kit/`，不带 `demo/`。
+控件（Button、Input、Select、Table、Modal…）直接从 `antd` 导入；下面是 ui-kit 补充的部分，都从 `./ui-kit` 导入。每个组件的用法约束见 [design.md「Components」](design.md#components)，速查表见 [AI_GUIDE「组件速查」](AI_GUIDE.md#组件速查从-ui-kit-导入)。
+
+**应用骨架**
+
+| 组件 | 用途 |
+|---|---|
+| `AppShell` | 侧栏 + 主区外壳：品牌、分组导航、侧栏底栏、顶栏 / 状态栏插槽 |
+| `Topbar` / `StatusBar` | 主区顶栏、底部状态栏（毛玻璃下状态栏透明，与侧栏底栏等高同线） |
+| `Page` / `PageHeader` | 页面容器（默认撑满不滚动）、页面标题区 |
+| `Workspace` | 左列表 + 右设置栏（统一 300px），`asideFooter` 放常驻主按钮 |
+| `Panel` | 卡片（antd Card），`fill` 时内容区撑满并可滚动 |
+| `NavBadge` | 侧栏导航徽标：进行中数量 / 弱化的总数 |
+| `ErrorBoundary` | 渲染出错兜底，整窗或单页（`size="page"`） |
+
+**列表与图片**
+
+| 组件 | 用途 |
+|---|---|
+| `DropZone` | 拖拽区视觉提示 + 点击选择文件 |
+| `ListWell` | 列表 / 表格的内嵌滚动容器 |
+| `FileRow` / `FailedMark` | 文件名列表行（含失败状态）、失败标记；`FILE_ROW_ERROR_CLASS` 给 antd Table 标红失败行 |
+| `ListRow` / `useRowFlash` | 富列表行（缩略图、多行信息、行尾操作、选中 / 失败 / 定位高亮），定位后闪烁并滚到可见 |
+| `LinkTag` | 可点击的标签，用于跳转、定位（如「改自 #7」） |
+| `Thumb` / `ThumbStrip` | 本地图片缩略图、缩略图条（支持 `fit="cover" \| "contain"`） |
+| `ImageBadge` | 图片上的角标 |
+| `ImageGrid` | 可选中的图片瓦片网格，双击看大图，选中项自动滚到可见 |
+| `RatioIcon` / `RatioSelect` / `RatioPreview` | 比例图示、比例选择器、宫格预览 |
+
+**表单与设置**
+
+| 组件 | 用途 |
+|---|---|
+| `SettingsSection` | 设置页分区（标题、说明、右侧操作） |
+| `SettingsScroll` | 设置 / 参数区的滚动容器，内容超出时在下方提示「向下滚动查看更多」 |
+| `AdvancedSection` | 「高级」折叠，显示已改项数，可放「恢复默认」 |
+| `ScrollArea` | 通用纵向滚动区，带同样的下方提示行 |
+| `ScrollField` / `useFieldScroll` | 字段锚点，按字段名滚到指定表单项 |
+| `FieldHint` | 右栏参数的提示 / 警示（不用 Alert） |
+
+**反馈与日志**
+
+| 组件 | 用途 |
+|---|---|
+| `LogViewer` / `LogActions` | 彩色日志（跟随但可上翻），标题栏的复制全部 / 清空按钮 |
+| `useLogger` / `pushLog` | 每页一份日志状态；组件外或页面挂载前按通道写日志 |
+| `ProgressPanel` | 批处理进度（antd Progress） |
+| `StatusTag` | 带图标的状态标签预设：排队 / 进行中 / 成功 / 失败 / 警告 / 已取消 |
+| `EmptyState` | 图标 + 文案 + 操作的空状态 |
+
+**主题切换**
+
+| 组件 | 用途 |
+|---|---|
+| `ThemeProvider` / `useTheme` | 唯一入口：包好 `StyleProvider` → `ConfigProvider`（主题 + 中文语言包）→ antd `App`，并把 token 写成 CSS 变量 |
+| `ThemeMenu` | 侧栏底部的主题下拉菜单 |
+| `ThemeToggle` | 浅色 / 深色切换按钮 |
+| `ThemePicker` | 设置页的主题卡片选择（带配色色块和区分度提示） |
+
+**Tauri 集成**
+
+| 名称 | 用途 |
+|---|---|
+| `useFileDrop` | 窗口级拖拽，拿得到真实文件路径（WebView 里不要用 `Upload.Dragger`） |
+| `useBatchProgress` | 订阅 Rust 批处理进度事件，配合 `ProgressPanel` |
+| `useTaskEvents` / `createMockTaskBackend` | 订阅 Rust 多任务队列事件（`task-updated` / `task-removed`）；内存模拟后端用于 demo 与测试 |
+| `tauri/tauri.conf.snippet.json` | 窗口尺寸、CSP、assetProtocol 配置片段 |
+| `scripts/icon/make-icons.sh` | 应用图标：SVG → 透明 PNG → `tauri icon` → 逐尺寸校验四角透明（macOS） |
+
+**页面配方**：`recipes/` 下有批处理页、任务队列页、图库页、设置页四个完整可运行的页面，拷到项目里再改。各配方的适用场景和数据层写法见 [AI_GUIDE 第 6 步](AI_GUIDE.md#第-6-步先选配方再写页面)。
+
+## 接入
+
+### 桌面项目
+
+Tauri 2 项目引入完整的 ui-kit（不含 `demo/` 和 `docs/`）。下面是要点，逐步细节见 [AI_GUIDE.md](AI_GUIDE.md)。
+
+**1. 拷贝目录**到 `src/ui-kit/`：
 
 ```bash
 git clone https://github.com/byttao/ui-kit.git /tmp/ui-kit
-rsync -a --exclude demo --exclude .git /tmp/ui-kit/ src/ui-kit/
+rsync -a --exclude demo --exclude docs --exclude .git /tmp/ui-kit/ src/ui-kit/
+cp src/ui-kit/theme-init.js public/theme-init.js
 ```
 
-升级时同样操作，再对照 CHANGELOG.md 检查不兼容变化。项目里用的版本可以读 `UI_KIT_VERSION`。
-
-**2. 装依赖**（版本与 demo 一致）
+**2. 安装依赖**（版本与 demo 一致）：
 
 ```bash
 npm i antd@^6.6 @ant-design/cssinjs@^2.1 @ant-design/colors@^8 @ant-design/icons@^6 clsx tailwind-merge
@@ -91,11 +182,21 @@ npm run tauri add dialog     # 文件选择框
 npm run tauri add opener     # 打开链接、在访达 / 资源管理器中显示
 ```
 
-`@ant-design/cssinjs` 的版本必须与 antd 依赖的一致（`npm ls @ant-design/cssinjs` 只应出现一个版本）。`src-tauri/capabilities/default.json` 的 `permissions` 要有 `"dialog:default"`、`"opener:default"`。
+- `npm ls @ant-design/cssinjs` 只应出现一个版本（必须与 antd 依赖的一致）。
+- `src-tauri/capabilities/default.json` 的 `permissions` 要有 `"dialog:default"`、`"opener:default"`。
 
-**Tauri 配置**：把 `tauri/tauri.conf.snippet.json` 的 `app` 合并进 `src-tauri/tauri.conf.json`；`src-tauri/Cargo.toml` 的 tauri 依赖加 `features = ["protocol-asset"]`（开 assetProtocol 必须，不加编译报错）。
+**3. Tauri 配置**
 
-**3. Tailwind**
+- 把 `src/ui-kit/tauri/tauri.conf.snippet.json` 的 `app` 合并进 `src-tauri/tauri.conf.json`（窗口最小 1100 × 700、CSP、assetProtocol）。
+- `src-tauri/Cargo.toml` 的 tauri 依赖开启 `protocol-asset`，否则开了 assetProtocol 会编译报错：
+
+```toml
+tauri = { version = "2", features = ["protocol-asset"] }
+```
+
+本地图片预览要三处同时配好：`protocol-asset` 特性、`assetProtocol.enable` + `scope`、CSP 的 `img-src` 放行 `asset: http://asset.localhost`。缺一项图片就是空白且不报错。
+
+**4. Tailwind**
 
 ```js
 // tailwind.config.cjs
@@ -105,7 +206,12 @@ module.exports = {
 };
 ```
 
-**4. 入口 CSS**：顺序不能换。
+```js
+// postcss.config.cjs
+module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };
+```
+
+**5. 入口 CSS**：顺序不能换。
 
 ```css
 /* src/index.css */
@@ -120,67 +226,190 @@ module.exports = {
 @tailwind utilities;
 ```
 
-第一行决定层级：Tailwind 的基础重置在 antd 之下（否则 preflight 会把 antd 按钮的背景清成透明），工具类不分层、优先级最高（写在 antd 组件上的 Tailwind 类能生效）。
+第一行决定层级：Tailwind 的基础重置排在 antd 之下（否则 preflight 会把 antd 按钮的背景清成透明），工具类不分层、优先级最高（写在 antd 组件上的 Tailwind 类能生效）。
 
-**5. HTML**：把 `theme-init.js` 拷到 `public/`，在 `index.html` 的 `<head>` 里加 `<script src="/theme-init.js"></script>`。
+**6. HTML**：在 `index.html` 的 `<head>` 里加 `<script src="/theme-init.js"></script>`，首帧前设好明暗，启动不闪烁。
 
-**6. Provider**
+**7. Provider**
 
 ```tsx
-import { ThemeProvider } from "./ui-kit";
+// src/main.tsx
+import { ErrorBoundary, ThemeProvider } from "./ui-kit";
 
-<ThemeProvider>   {/* 默认：accent="forest" sidebar="light" glass，见 DEFAULTS */}
-  {/* accent: geekblue | purple | cyan | forest | gold | morandi | macaron */}
-  <App />
+<ThemeProvider>   {/* 默认：accent="forest" sidebar="light" glass */}
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
 </ThemeProvider>
 ```
 
-`accent`、`mode` 都可受控；`onAccentChange` / `onModeChange` 在侧栏菜单（`ThemeMenu`）、明暗按钮（`ThemeToggle`）、`useTheme().setAccent / setMode / toggle` 切换时回调（`ThemePicker` 的 `onChange` 传 `setAccent` 即可）。主题要存进应用自己的设置文件时用它们（见 AI_GUIDE 第 5 步）；都不传时行为与 1.2.0 一致（存 `localStorage`）。
+`ThemeProvider` 已经包含 `StyleProvider layer`、`ConfigProvider` 和 antd `App`，不要再自己包一层 `ConfigProvider`。
 
-`ThemeProvider` 内部已经包好 `StyleProvider layer` → `ConfigProvider`（主题 + 中文语言包）→ antd `App`，不要再自己包一层 `ConfigProvider`。
+接下来按 [AI_GUIDE 第 6 步](AI_GUIDE.md#第-6-步先选配方再写页面) 选配方写页面，Rust 端的事件约定见 [AI_GUIDE「Rust 端约定」](AI_GUIDE.md#rust-端约定)。
 
----
+### 网页项目
 
-## 三、主题规范
+网页项目只用 ui-kit 的主题部分，不用桌面专属的样式和 Tauri 集成：
 
-按 antd [定制主题](https://ant.design/docs/react/customize-theme-cn) 的四层组织；交互色由 antd [色彩体系](https://ant.design/docs/spec/colors-cn) 的色板生成算法展开，不手写：
-
-| 层 | 内容 |
+| 拷入 | 不引入 |
 |---|---|
-| Seed | 主题的交互主色种子、功能色（antd 红 / 绿 / 金 / 蓝）、`fontSize: 12`、字体栈、墨色文字基色、`motion` |
-| 算法 | `defaultAlgorithm` / `darkAlgorithm` |
-| Map | 色板各档按档位规则写入 Hover / Active / Bg / Border / Text；表面色、文字透明度、`fontSizeSM: 11` |
-| 组件 | Menu / Layout（侧栏随主题）、Tag、Tabs、Button、Card、Table、Image |
+| `antd-theme.ts`、`theme.tsx`、`lib/`、`tailwind.preset.cjs` | `styles/base.css`（整窗不滚动、默认禁止选中文字、12px 正文）、`tauri/` |
 
-**主题**（`<ThemeProvider accent>`）= 交互主色种子 + 一组配色。种子推出按钮、链接等交互色（保证 AA）；配色用在侧栏、毛玻璃背景和主题选择器上。
+`theme-init.js` 可选：需要首帧就设好明暗时拷入；如果服务器不能直接提供这个静态文件，可以在构建时把它内联进 `index.html`。
 
-| `accent` | 名称 | 来源 | 区分度提示 |
-|---|---|---|---|
-| `geekblue` | 极客蓝 | antd 色板 | 侧栏为深蓝墨色 |
-| `purple` | 酱紫 | antd 色板 | 深色下与危险色 ΔE ≈ 12 |
-| `cyan` | 明青 | antd 色板 | — |
-| `forest` | 森翠雅韵 | 自定义 | **默认**；与「成功」同色系：成功状态带图标 |
-| `gold` | 辉煌金韵 | 自定义 | 与「警告」同色系：警告状态带图标 |
-| `morandi` | 莫兰迪色彩 | 自定义 | 深色下与危险色 ΔE ≈ 12 |
-| `macaron` | 马卡龙色彩 | 自定义 | 与「危险」相近：严格遵守危险操作约束 |
+```bash
+git clone https://github.com/byttao/ui-kit.git /tmp/ui-kit
+mkdir -p src/ui-kit
+cp /tmp/ui-kit/{antd-theme.ts,theme.tsx,tailwind.preset.cjs} src/ui-kit/
+rsync -a /tmp/ui-kit/lib/ src/ui-kit/lib/
+npm i antd@^6.6 @ant-design/cssinjs@^2.1 @ant-design/colors@^8 @ant-design/icons@^6 clsx tailwind-merge
+npm i -D tailwindcss@3 postcss autoprefixer
+```
 
-每个主题的配色、种子、深浅实心色、侧栏色和区分度数值见 design.md「Colors · 主题」。功能色不随主题变化。
+没有拷 `index.ts`，所以从 `./ui-kit/theme`、`./ui-kit/antd-theme` 导入。
 
-**新增主题**：在 `antd-theme.ts` 的 `THEMES` 里加一项 `{ label, source, swatches, primary, sidebar, note }`，然后跑 `npm run check:contrast`。对比度必须全过；区分度警告写进 `note`。字段含义见 design.md。
+**原则：不改 ui-kit 文件。** 字号、主色等差异都写在项目自己的包装层里，通过参数覆盖，升级时整目录覆盖即可。以编号软件（业码汇）的网页前端为例，它的包装层做了这几件事：
 
-**侧栏**跟随主题：`THEMES[x].sidebar` 是底色，文字、悬停、选中、图标自动推出。`<ThemeProvider sidebar="light">` 换成主题色浅底；深色模式下始终是主题色侧栏（压暗）。
+1. 主色、侧栏、毛玻璃用 `ThemeProvider` 的参数指定：`accent="geekblue" sidebar="light" glass={false}`。
+2. 正文改为 14px：在 `ThemeProvider` 里面嵌套一层 `ConfigProvider`，只覆盖字号种子，标题、行高仍由 antd 推导；再包一层 antd `App`，让 `App.useApp()` 的 message / modal 也用 14px。
+3. `ThemeProvider` 写在 `<html>` 上的 CSS 变量仍是 12px，Tailwind 的 `text-base` 等类读的是这些变量。包装层用 `buildTheme` + `antd` 的 `theme.getDesignToken` 算出 14px 与 12px 两套 token 的差异，把有差异的变量（`--ant-font-size` 等，变量名用 `toKebab` 转换）写到 `<body>` 上，页面元素就近继承。
 
-**深色表面**也跟随主题（1.3.0）：画布、卡片、浮层、描边、毛玻璃背景由一组参考墨色按 `sidebar` 的色相重新着色，彩度低、亮度与参考值一致，所以对比度结论不随主题变化。极客蓝与 1.2.0 逐值相同。各主题的取值见 design.md「其余覆盖」。
+```tsx
+// src/theme/AppThemeProvider.tsx（简化）
+import { App as AntApp, ConfigProvider, type ThemeConfig } from "antd";
+import { ThemeProvider } from "@/ui-kit/theme";
 
-**毛玻璃**：`<ThemeProvider glass>`。`Panel`、`Topbar` 变成玻璃面（`StatusBar` 是透明底：跟主区这一列，与侧栏底栏等高、同一条上边线），卡片里的 `ListWell`（含其中的 antd Table）变成更实的内嵌玻璃（`rgba(255,255,255,0.2)` + `blur(16px) saturate(180%)` + 16px 圆角），背景换成主题配色的径向渐变。背景强度会自动收敛到玻璃上的 12px 文字仍 ≥ 4.5:1，所以是柔和的渐变。深色模式用低透明度版本，数值见 design.md「Colors · 毛玻璃」。
+const WEB_THEME: ThemeConfig = { token: { fontSize: 14, fontSizeSM: 12 } };
 
-**主题切换**：不给 `ThemeProvider` 传 `accent` 时，主题由它自己保存并记住（`localStorage` 的 `ui-kit:accent`），用 `useTheme().setAccent` 切换。侧栏底部放 `<ThemeMenu />`（下拉列表）；设置页用 `<ThemePicker value={accent} onChange={setAccent} />`（卡片，带配色色块和区分度提示）。
+export function AppThemeProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider accent="geekblue" sidebar="light" glass={false}>
+      <ConfigProvider theme={WEB_THEME}>
+        <AntApp component={false}>{children}</AntApp>
+      </ConfigProvider>
+    </ThemeProvider>
+  );
+}
+```
 
----
+入口 CSS 保留层级声明，但不引入 `base.css`，自己写 `body` 的基础样式：
 
-## 四、Token 与 Tailwind 类
+```css
+/* src/index.css */
+@layer tailwind-base, antd;
 
-ThemeProvider 把 antd 解析后的全部 token 写到 `:root`：`--ant-color-primary`、`--ant-font-size`…（antd 自己的 CSS 变量只挂在组件节点上，自写元素读不到）。preset 的类名 = antd token 去掉 `color` / `colorBg` 前缀：
+@layer tailwind-base {
+  @tailwind base;
+}
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--ant-font-family);
+    font-size: var(--ant-font-size, 14px);
+    line-height: var(--ant-line-height, 1.5714);
+    color: var(--ant-color-text);
+    background-color: var(--ant-color-bg-layout);
+  }
+}
+```
+
+接好后在浏览器里确认：正文和输入框是 14px；**文字可以选中复制**（`user-select` 不是 `none`）；**页面能正常滚动**（`body` 没有 `overflow: hidden`）；`npm ls @ant-design/cssinjs` 只有一个版本。
+
+## 升级
+
+ui-kit 不发布到 npm，升级就是重新拷贝。桌面项目整目录覆盖：
+
+```bash
+rsync -a --delete --exclude demo --exclude docs --exclude .git --exclude .claude /tmp/ui-kit/ src/ui-kit/
+```
+
+网页项目重新拷贝上面那四项即可。项目里的版本可以读 `UI_KIT_VERSION`（桌面项目）；网页项目没有拷 `index.ts`，建议在 `src/ui-kit/` 旁记下拷入的版本和 commit。
+
+升级前读 [CHANGELOG.md](CHANGELOG.md) 对应版本的「不兼容变化」和「从上一版升级」，按其中的步骤检查业务代码，再跑 `npm run build` 和 `antd lint`。
+
+## 目录结构
+
+```text
+ui-kit/
+├── package.json              版本号与依赖（peerDependencies），不发布到 npm
+├── README.md                 本文件：导览
+├── design.md                 设计差异（google design.md 格式，继承 antd design.md）
+├── AI_GUIDE.md               逐步接入指令与自检
+├── CHANGELOG.md              更新记录与升级步骤
+├── index.ts                  统一出口（含 UI_KIT_VERSION）
+├── antd-theme.ts             主题规范：主题（种子 + 配色）、功能色、档位规则、侧栏、毛玻璃 → ConfigProvider theme
+├── theme.tsx                 ThemeProvider / useTheme（StyleProvider + ConfigProvider + App）
+├── theme-init.js             首帧主题脚本（防闪烁）
+├── tailwind.preset.cjs       Tailwind preset：颜色、字号、圆角、阴影、时长都指向 antd 变量
+├── styles/
+│   └── base.css              桌面化基础样式（滚动条、不可选中、减弱动效）
+├── lib/
+│   ├── cn.ts                 className 合并（已登记自定义刻度）
+│   ├── contrast.ts           WCAG 对比度、OKLab ΔE
+│   └── audit.ts              主题审计清单
+├── components/app/           antd 没有的应用级组件
+│   ├── app-shell.tsx         AppShell / Topbar / StatusBar / Page / PageHeader / Workspace / Panel
+│   ├── nav-badge.tsx         NavBadge
+│   ├── error-boundary.tsx    ErrorBoundary
+│   ├── drop-zone.tsx         DropZone
+│   ├── file-list.tsx         ListWell / FileRow / FailedMark / FILE_ROW_ERROR_CLASS / fileName
+│   ├── list-row.tsx          ListRow / useRowFlash
+│   ├── link-tag.tsx          LinkTag
+│   ├── thumb.tsx             Thumb / ThumbStrip / ImageBadge / localImageSrc
+│   ├── image-grid.tsx        ImageGrid
+│   ├── ratio.tsx             RatioIcon / RatioSelect / RatioPreview / parseRatio
+│   ├── settings-section.tsx  SettingsSection / SettingsScroll / AdvancedSection
+│   ├── scroll-area.tsx       ScrollArea / ScrollField / useFieldScroll / scrollToField
+│   ├── field-hint.tsx        FieldHint
+│   ├── log-viewer.tsx        LogViewer / LogActions / useLogger / pushLog
+│   ├── progress-panel.tsx    ProgressPanel
+│   ├── status-tag.tsx        StatusTag
+│   ├── empty-state.tsx       EmptyState
+│   ├── theme-toggle.tsx      ThemeToggle
+│   ├── theme-menu.tsx        ThemeMenu
+│   └── theme-picker.tsx      ThemePicker
+├── tauri/
+│   ├── useFileDrop.ts        窗口级拖拽（拿得到真实路径）
+│   ├── useBatchProgress.ts   订阅 Rust 批处理进度事件
+│   ├── useTaskEvents.ts      订阅 Rust 多任务队列事件 + createMockTaskBackend
+│   └── tauri.conf.snippet.json  窗口 / CSP / assetProtocol 片段（含 Cargo 与插件权限说明）
+├── recipes/                  页面配方（完整可运行，拷到项目里改）
+│   ├── batch-page.tsx        批处理页
+│   ├── queue-page.tsx        任务队列页
+│   ├── gallery-page.tsx      图库页
+│   ├── settings-page.tsx     设置页
+│   └── mock.ts               demo / 测试用的内存数据层（不要拷进项目）
+├── scripts/icon/             应用图标（macOS）
+│   ├── make-icons.sh         SVG → 透明 PNG → tauri icon → 校验
+│   ├── render-svg.swift      AppKit 渲染透明底 PNG
+│   └── check-alpha.swift     逐尺寸校验四角透明
+├── docs/images/              README 截图（不要拷进项目）
+└── demo/                     演示与验证工程（不要拷进项目）
+    ├── src/                  页面配方、表格变体、组件一览、对比度页
+    └── scripts/check-contrast.mjs  主题审计（npm run check:contrast）
+```
+
+## 使用它的项目
+
+| 项目 | 说明 |
+|---|---|
+| [huijing](https://github.com/byttao/huijing) | 绘境：AI 出图桌面应用，任务队列与多合一拆切 |
+| [PigResizeF](https://github.com/byttao/PigResizeF) | 图片批量裁切与京东详情页分段导出 |
+| [tb-goodpic](https://github.com/byttao/tb-goodpic) | 淘宝图片下载：批量下载主图、SKU 图和详情图 |
+| [FirmMatterCodeManagement](https://github.com/byttao/FirmMatterCodeManagement) | 业码汇的网页前端，按「网页项目」方式接入（迁移进行中） |
+
+另有若干内部工具（私有仓库）。
+
+## 参考速查
+
+<details>
+<summary><strong>Token 与 Tailwind 类</strong></summary>
+
+`ThemeProvider` 把 antd 解析后的全部 token 写到 `:root`（`--ant-color-primary`、`--ant-font-size`…）。preset 的类名 = antd token 去掉 `color` / `colorBg` 前缀：
 
 | antd token | Tailwind 类 |
 |---|---|
@@ -199,214 +428,14 @@ ThemeProvider 把 antd 解析后的全部 token 写到 `:root`：`--ant-color-pr
 | `controlHeight / SM / LG` | `h-control` 32 / `h-control-sm` 24 / `h-control-lg` 40 |
 | ui-kit 扩展 | `bg-sidebar`、`text-sidebar-text`、`text-log-info` … |
 
-- **不要用透明度写法**（`bg-primary/10`）：变量是完整颜色，不支持；要浅色用 antd 推导好的档位。
-- **不要写色板类**（`bg-orange-500`、`text-gray-400`）或内联十六进制：不随主题切换。
-- 组件里需要数值时用 `theme.useToken()`。
-- SVG 用同名的 `fill-*` / `stroke-*` 类（`fill-primary-bg stroke-primary`、`fill-container`），或 `stroke="currentColor"` 继承文字色；示意图配色约定见 design.md「SVG 与示意图的颜色」。
-- 内联 `style` 只给运行时算出的数据（宽高比、列数、传入的尺寸），见 design.md「控件一律用 antd 的两个例外」。
+- 不要用透明度写法（`bg-primary/10`）：变量是完整颜色，不支持；要浅色用 antd 推导好的档位。
+- 不要写色板类（`bg-orange-500`、`text-gray-400`）或内联十六进制：不随主题切换。
+- 组件里需要数值时用 `theme.useToken()`；SVG 用同名的 `fill-*` / `stroke-*` 类。
 
----
+</details>
 
-## 五、页面骨架
-
-功能页是同一种结构：**左边列表、右边设置（主按钮常驻底部）、底部日志**。**先选配方**：`recipes/` 里有批处理页、任务队列页、图库页、设置页四个完整可运行的页面，拷到 `src/pages/` 再改（各配方的适用场景、骨架、数据层写法见 AI_GUIDE 第 6 步）。下面是批处理页的骨架。
-
-```tsx
-import { Button, Radio, Space, Typography } from "antd";
-import { AppShell, DropZone, FileRow, ListWell, LogViewer, Page, Panel, ProgressPanel, ThemeMenu, ThemeToggle, Workspace } from "./ui-kit";
-
-<AppShell
-  brand={{ mark: "P", name: "PigResize", subtitle: "图片批量处理" }}
-  nav={[
-    { key: "convert", label: "图片转换", icon: <SwapOutlined />, section: "图片处理" },
-    { key: "crop", label: "图片裁切", icon: <ScissorOutlined /> },
-  ]}
-  active={page}
-  onNavigate={setPage}
-  sidebarFooter={<><span>版本 V1.6.1</span><span className="flex items-center gap-1"><ThemeMenu /><ThemeToggle /></span></>}
->
-  <Page>
-    <Workspace
-      aside={
-        <Panel title="转换样式">
-          <Radio.Group orientation="vertical" options={presets} value={preset} onChange={(e) => setPreset(e.target.value)} />
-        </Panel>
-      }
-      asideFooter={
-        <>
-          <ProgressPanel progress={progress} />
-          <Button type="primary" block>开始转换 · {files.length} 张</Button>
-        </>
-      }
-    >
-      <Panel
-        fill
-        className="flex-1"
-        title="待转换图片"
-        extra={<Button type="link" size="small" onClick={clear}>清空列表</Button>}
-      >
-        <DropZone active={hovering} compact={files.length > 0} onBrowse={pickFiles} />
-        <ListWell>{/* FileRow 列表，或 antd Table */}</ListWell>
-      </Panel>
-    </Workspace>
-
-    <Panel fill title="处理日志" size="small" className="h-[170px] shrink-0" extra={<LogActions logs={logs} onClear={clear} />}>
-      <LogViewer logs={logs} />
-    </Panel>
-  </Page>
-</AppShell>
-```
-
-任务队列页、图库页、设置页的完整写法见 `recipes/`。
-
-布局规则：
-
-- **右栏宽度全应用统一**。`Workspace` 默认 300px；切页时右栏不能跳。
-- **主按钮放 `asideFooter`**，常驻右栏底部；参数多时 `aside` 用一张 `<Panel fill className="min-h-0 flex-1">` + `SettingsScroll`，只滚参数区。
-- **有状态的页面常驻**，用 `hidden` 切换（日志、草稿、事件订阅不丢）；无状态的内容页可以按需挂载。
-- **只让列表滚动**。`Page` 撑满主区不滚，`ListWell` / `LogViewer` 各自滚。内容型页面用 `<Page fill={false}>`。
-- `Panel fill` 让内容区撑满卡片；卡片本身多高由 className 决定（列表 `flex-1`，日志 `h-[170px] shrink-0`）。
-- **清空列表**放在卡片标题右侧（`extra`），用 `type="link"`。
-- **主按钮固定在右栏底部**：批处理页写明数量，非批处理页写「动词 + 对象」（「保存设置」）。
-- 表格放进 `ListWell`，用 `sticky={{ getContainer: () => wellRef.current }}` 让表头吸顶。
-- **部分失败时保留失败项**：成功的移出列表，失败的留下并标红，方便重试。列表用 `<FileRow status="error">`；antd Table 用 `rowClassName={(r) => failed.has(r.path) ? FILE_ROW_ERROR_CLASS : ""}`，名称列加 `<FailedMark />`。
-
----
-
-## 六、组件用法（antd 约定）
-
-| 场景 | 写法 |
-|---|---|
-| 主操作 | `<Button type="primary">`，每个区域最多一个，放 `Workspace` 的 `asideFooter` |
-| 危险操作 | 页面上 `<Button danger icon={<DeleteOutlined />}>删除…</Button>`；实心危险按钮只出现在 `modal.confirm({ okButtonProps: { danger: true } })` 里 |
-| 竖排单选 | `<Radio.Group orientation="vertical" options={…} />` |
-| 横排模式切换 | `<Segmented options={…} />` |
-| 表格内下拉 | `<Select size="small" />` |
-| 状态标签 | `<StatusTag status="success" />`（排队 / 进行中 / 成功 / 失败 / 警告 / 已取消），或 `<Tag icon={<CheckCircleOutlined />} color="success">`，**一律带图标** |
-| 行尾操作 | `type="text" size="small"` 图标按钮 + Tooltip，最多 3 个，其余收进「更多」（`MoreOutlined` + `Dropdown`） |
-| 右栏参数提示 | `Form.Item extra`；依赖其他参数的提示 / 警示用 `<FieldHint>` / `<FieldHint type="warning">`，不用 Alert |
-| 侧栏徽标 | `<NavBadge count={n} />`（进行中）/ `<NavBadge tone="muted" />`（数量），不用 antd `Badge` 的默认红色 |
-| 提示条 | `<Alert showIcon type="warning" title="…" />`（v6：`title`，不是 `message`） |
-| 轻提示 / 确认框 | `const { message, modal } = App.useApp()`，不要用静态 `message.success()` |
-| 空状态 | 一句话：`<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="…" />`；要引导操作：`<EmptyState icon title description action />` |
-| 列表行 | 纯文件名：`FileRow`；缩略图 + 多行信息 + 操作：`ListRow`；要列 / 排序：antd `Table` |
-| 定位到某条 | 列表：`useRowFlash` 的 `flash(id)`（闪 2 秒并滚到可见）；图库：改 `ImageGrid` 的 `selectedKey` |
-| 可点击的标签 | `<LinkTag onClick>改自 #7</LinkTag>`（跳转 / 定位用） |
-| 图片上的角标 | `<ImageBadge>#12-3</ImageBadge>`（实底卡片色 + 描边） |
-| 日志清空 / 复制 | `<Panel extra={<LogActions logs={logs} onClear={clear} />}>` + `<LogViewer logs={logs} />` |
-| 低频参数 | 参数区最后放 `<AdvancedSection changedCount extra>`（默认折叠） |
-| 长条图 / 比例悬殊的图 | `ImageGrid` / `Thumb` / `ThumbStrip` 的 `fit="contain"` |
-| 滚动区有更多内容 | `ScrollArea` / `SettingsScroll` / `Workspace` 右栏默认在下方显示「向下滚动查看更多」提示行（不遮挡内容） |
-| 滚到某个字段 | `<ScrollField name="size">` 包住表单项 + `useFieldScroll()` 的 `scrollToField("size")` |
-| 错误兜底 | 入口 `<ErrorBoundary>`；每个功能页 `<ErrorBoundary size="page">` |
-| 本地图片 | `Thumb`（缩略图）、`ThumbStrip`（缩略图条 / 参考图墙）、`ImageGrid`（图库） |
-| 比例 / 尺寸选择 | `<RatioSelect options={[{ value: "1:1", size: "1024 × 1024" }]} />` + `<RatioPreview ratio cols rows caption />` |
-| 设置页 | `SettingsScroll` > `Form layout="vertical"` > `SettingsSection`；排版见 design.md「设置页」 |
-
-v6 已弃用：`Space direction` → `orientation`、`Alert message` → `title`、`Progress trailColor` → `railColor`。写 antd 代码前先 `antd info <组件> --format json` 查 API，写完 `antd lint <文件>`。
-
----
-
-## 七、Tauri 部分
-
-### 拖拽
-
-```tsx
-const { hovering } = useFileDrop((paths) => addFiles(paths), {
-  extensions: ["jpg", "png"],   // 默认常见图片格式
-  enabled: !processing,         // 处理中忽略拖入
-});
-<DropZone active={hovering} onBrowse={pickFiles} />
-```
-
-必须用 `getCurrentWebview().onDragDropEvent()`。HTML5 的 `dataTransfer.files` 在 WebView 里拿不到本地路径，所以**也不要用 antd 的 `Upload.Dragger`**。拖到窗口任何位置都会生效，`DropZone` 只负责视觉提示。
-
-### 批处理进度
-
-Rust 端约定：
-
-```rust
-#[derive(Clone, Serialize)]
-struct ProgressEvent { current: usize, total: usize, file_name: String, percent: f64, stage: String }
-
-#[tauri::command]
-async fn batch_resize(app: AppHandle, files: Vec<String>) -> Result<BatchResult, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        // 每张图、每个阶段：
-        app.emit("resize-progress", ProgressEvent { … }).ok();
-    }).await.map_err(|e| e.to_string())?
-}
-```
-
-前端：
-
-```tsx
-const { progress, start, finish } = useBatchProgress("resize-progress", (e) =>
-  log(`[*] 正在处理: ${e.file_name}`, "processing")
-);
-
-start(files.length);
-try { await invoke("batch_resize", { files }); finish("完成"); }
-catch { finish("失败", false); }
-
-<ProgressPanel progress={progress} />
-```
-
-`percent` 由 Rust 端综合"第几张 + 单张内部阶段"算出，进度条才不会一张一跳。
-
-### 多任务队列
-
-任务各自独立、可并发、排队 / 取消 / 重试时（AI 出图、下载队列），不用批处理那一套：Rust 端任务变化时推整条任务 `task-updated`、删除时推 id 数组 `task-removed`，`list_tasks` 返回全量；前端：
-
-```tsx
-const { tasks, loaded } = useTaskEvents<Task>({ sort: (a, b) => b.createdAt - a.createdAt });
-// <ListRow leading={<Thumb path={t.output} />} meta={<StatusTag status="processing" />} … />
-```
-
-Rust 端写法与状态映射见 AI_GUIDE「多任务队列」。
-
-### 日志写入通道
-
-Rust 在 setup 里（页面还没挂载）发的日志：在 `main.tsx` 渲染前 `listen` 并 `pushLog("页面名", msg, level)`，页面用 `useLogger({ channel: "页面名" })`，挂载时补上缓冲的内容。
-
-### 预览本地图片
-
-用 `<Thumb path={…} />` / `ThumbStrip` / `ImageGrid`（内部是 `convertFileSrc`，自己拼地址用 `localImageSrc`）。asset 协议要三处同时配好：
-
-- `src-tauri/Cargo.toml`：`tauri = { version = "2", features = ["protocol-asset"] }`（不加编译报错）
-- `app.security.assetProtocol.enable = true` 和 `scope`
-- CSP 的 `img-src` 放行 `asset: http://asset.localhost`
-
-缺后两项任何一项图片都是空白，且不报错（`Thumb` 会显示「图片无法显示」占位）。antd 运行时会插入 `<style>`，CSP 的 `style-src` 需要包含 `'unsafe-inline'`（片段里已有）。
-
-### 应用图标
-
-```bash
-bash src/ui-kit/scripts/icon/make-icons.sh src-tauri/app-icon.svg   # macOS：渲染透明 PNG → tauri icon → 校验四角透明
-```
-
-macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透明）与「`qlmanage` 渲染会垫白底」的坑见 design.md「应用图标」。侧栏品牌标记可以传 `brand={{ mark: { src } }}` 直接用图标图片（用不带留边的版本）。
-
----
-
-## 八、对比度与审计
-
-正文 11–12px 属于小字，所有文字 / 背景组合按 WCAG AA **4.5:1** 校验，图标 3:1。antd 默认主题有好几组不达标（`#1677FF` 白字 4.10:1、说明文字 0.45 透明度约 3.3:1、暗色色板第 6 档当文字约 2–3:1），所以 `antd-theme.ts` 用档位规则顺延。
-
-两种检查：
-
-- `npm run check:contrast`（demo 目录）：用 `lib/audit.ts` 的清单逐组计算，7 主题 × 深浅 × 侧栏样式 × 毛玻璃开关 = 42 种组合；每种 70 组对比度（含 1.3.0 / 1.4.0 新组件：中性标签、失败行标签、缩略图占位与说明、瓦片选中描边、图片角标、可点击标签、比例预览、参数提示 / 警示、导航徽标），毛玻璃组合共 150 组（再加每个背景色块上的卡片文字、参数警示、列表、表头与日志）+ 3 组区分度（主色与危险 / 警告 / 成功的 ΔE）。对比度不达标退出码为 1；区分度不足只警告。
-- demo「对比度」页：同一份清单的可视化，含样张。
-
-**改任何颜色后都要跑一遍，必须全绿。** 清单覆盖不到的组合（自写元素的新配色），在 demo 里打开对应页面目测，或补进 `lib/audit.ts`。
-
----
-
-## 九、迁移
-
-**升级**：见 CHANGELOG.md 各版本的「从上一版升级」（1.6.0 → 1.6.1、1.5.0 → 1.6.0、1.4.0 → 1.5.0、1.3.0 → 1.4.0、1.2.0 → 1.3.0）。
-
-**从 ui-kit v1（shadcn 结构）**：
+<details>
+<summary><strong>从 ui-kit v1（shadcn 结构）迁移</strong></summary>
 
 | v1 写法 | 改成 |
 |---|---|
@@ -417,18 +446,19 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 | `Badge tone` / `Notice tone` | `Tag color` / `Alert type` |
 | `Progress` | antd `Progress` |
 | `ToastProvider` + `useToast()` | `App.useApp().message` |
-| `ListRow` / `DataTable` / `EmptyState`（v1） | 1.3.0 的 `ListRow` / antd `Table` / 1.3.0 的 `EmptyState`（API 不同，按速查表改写） |
+| `ListRow` / `DataTable` / `EmptyState`（v1） | 1.3.0 起的 `ListRow` / antd `Table` / `EmptyState`（API 不同，按组件清单改写） |
 | `accent="blue" \| "orange" \| "green"` | `accent` 取 `THEMES` 的键（橙色、拂晓蓝已停用）；`sidebar="dark"` 改为 `"theme"` |
 | `bg-card` / `bg-background` / `text-muted-foreground` / `bg-accent` | `bg-container` / `bg-layout` / `text-text-secondary` / `bg-item-active` |
 | `text-xs` 11 / `text-sm` 12 / `text-base` 14 | `text-sm` 11 / `text-base` 12 / `text-lg` 14 |
 | `rounded-md` 8 / `rounded-xl` 14 | `rounded` 6 / `rounded-lg` 8 |
-| `styles/tokens.css` | 删除，颜色由 ThemeProvider 写入 |
+| `styles/tokens.css` | 删除，颜色由 `ThemeProvider` 写入 |
 
-**从 PigResize 1.6.1**：先换外壳（`ThemeProvider` + `AppShell`），再逐页把 `components/ui/*` 换成 antd 组件，每换一页对照截图检查。`bg-orange-500` 这类色板类和 `style={{ color: hsl(var(--…)) }}` 都改成语义类。
+先换外壳（`ThemeProvider` + `AppShell`），再逐页把旧组件换成 antd 组件，每换一页对照截图检查。色板类和 `style={{ color: hsl(var(--…)) }}` 都改成语义类。
 
----
+</details>
 
-## 十、验收清单
+<details>
+<summary><strong>桌面项目验收清单</strong></summary>
 
 1. `npm run check:contrast` 没有对比度失败；区分度警告只出现在 design.md 主题表里加粗的那几项。
 2. 浅色、深色、跟随系统都能切换，重启后保持；启动时无闪烁。
@@ -437,11 +467,15 @@ macOS 留边规范（1024 画布、底板 824 居中、圆角约 185、四周透
 5. 控件 32px 高、6px 圆角；卡片 8px 圆角 + 1px 描边，没有大阴影。
 6. Tab 键走一遍，每个可操作元素都有焦点提示。
 7. 系统开启「减弱动态效果」后，Segmented、弹窗、下拉仍能正常切换和关闭，下拉出现在触发器旁边而不是屏幕外。
-8. 开毛玻璃后逐个主题看一遍：卡片文字清楚、背景渐变不刺眼、深色下卡片不发灰；深色下主区颜色跟随主题（不是固定的蓝灰）。
-9. 从 Finder / 资源管理器拖文件到窗口任何位置都能添加。
+8. 开毛玻璃后逐个主题看一遍：卡片文字清楚、背景渐变不刺眼、深色下卡片不发灰；深色下主区颜色跟随主题。
+9. 从访达 / 资源管理器拖文件到窗口任何位置都能添加。
 10. 预览图能显示（asset 协议已开，Cargo 有 `protocol-asset`）。
 11. 参数很多的页面，主按钮仍在可视区内（`asideFooter`）；切页后回来，日志与草稿还在（页面常驻）。
 12. 处理时进度条连续前进，日志自动跟随但可以上翻。
 13. 窗口缩到 1100px 宽：无横向滚动条、标签不截断、侧栏收窄到 195px。
 14. Windows（WebView2）与 macOS（WKWebView）各看一次：滚动条宽度一致、字体不发虚。
 15. 应用图标四角透明（`scripts/icon/check-alpha.swift` 全部 OK）。
+
+代码层面的自检（禁用写法搜索等）见 [AI_GUIDE「完成后自检」](AI_GUIDE.md#完成后自检)。
+
+</details>
