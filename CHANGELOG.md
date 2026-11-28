@@ -2,6 +2,19 @@
 
 版本号遵循语义化版本：主版本号变化表示有不兼容的接口或视觉规范调整，次版本号表示新增主题 / 组件，修订号表示修复。
 
+## 1.6.2 · 2026-11-28
+
+修复 macOS（WKWebView）上自定义滚动条不生效的缺陷。只改样式，未新增或删除导出，属修订版。
+
+### 修复
+
+- **macOS 上滚动条不可见，横向溢出的表格看起来像被截断。** 原因：WebKit 只有在 `::-webkit-scrollbar` 上重置 `-webkit-appearance` 后才会采用自定义滚动条样式，否则仍用系统覆盖式滚动条——不滚动时整条隐藏。`styles/base.css` 的全局 `::-webkit-scrollbar` 已补 `-webkit-appearance: none;`，Windows（WebView2）与 macOS 行为一致。
+
+### 对使用方的影响
+
+- macOS 上滚动条从「滚动时才浮现」变成常显细条（宽 8px）；Windows 无变化。
+- 以源码拷入的项目需重新拷贝 `styles/base.css`，或在各自全局样式里补一条 `::-webkit-scrollbar { -webkit-appearance: none; }`。
+
 ## 1.6.1 · 2026-11-16
 
 修复毛玻璃下 `StatusBar` / `Topbar` 底色被盖成实心的缺陷，并统一侧栏底栏与 `StatusBar` 相邻时的高度、边线和底色。只改内部类名与样式，没有新增或删除导出，所以是修订版。

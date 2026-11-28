@@ -87,7 +87,10 @@
     scrollbar-width: thin;
     scrollbar-color: var(--ant-color-fill-secondary) transparent;
   }
+  /* WebKit（macOS 的 WKWebView）只有在 -webkit-appearance 被重置后才会采用自定义滚动条，
+     否则一直用系统覆盖式滚动条：不滚动时整条不可见，横向溢出的表格看起来像被截断。 */
   ::-webkit-scrollbar {
+    -webkit-appearance: none;
     width: 8px;
     height: 8px;
   }
